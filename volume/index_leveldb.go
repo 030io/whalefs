@@ -7,15 +7,13 @@ import (
 	"strconv"
 )
 
-var configPrefix = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, '_'}
-
 type LevelDBIndex struct {
 	path string
 	db   *leveldb.DB
 }
 
 func NewLevelDBIndex(dir string, vid int) (index *LevelDBIndex, err error) {
-	path := filepath.Join(dir, strconv.Itoa(vid) + ".ldb")
+	path := filepath.Join(dir, strconv.Itoa(vid) + ".index")
 	index = new(LevelDBIndex)
 	index.path = path
 	index.db, err = leveldb.OpenFile(path, nil)
@@ -24,7 +22,7 @@ func NewLevelDBIndex(dir string, vid int) (index *LevelDBIndex, err error) {
 
 func (l *LevelDBIndex)Get(fid uint64) (*FileInfo, error) {
 	key := make([]byte, 8)
-	binary.LittleEndian.PutUint64(key, fid)
+	binary.BigEndian.PutUint64(key, fid)
 	data, err := l.db.Get(key, nil)
 	if err != nil {
 		return nil, err
@@ -40,14 +38,6 @@ func (l *LevelDBIndex)Set(iv *FileInfo) error {
 
 func (l *LevelDBIndex)Delete(fid uint64) error {
 	key := make([]byte, 8)
-	binary.LittleEndian.PutUint64(key, fid)
+	binary.BigEndian.PutUint64(key, fid)
 	return l.db.Delete(key, nil)
-}
-
-func (l *LevelDBIndex)getConfig(key []byte) ([]byte, error) {
-	return l.db.Get(append(configPrefix, key...), nil)
-}
-
-func (l *LevelDBIndex)setConfig(key, value []byte) error {
-	return l.db.Put(append(configPrefix, key...), value, nil)
 }

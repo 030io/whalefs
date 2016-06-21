@@ -4,6 +4,7 @@ import (
 	"time"
 	"encoding/binary"
 	"errors"
+	"os"
 )
 
 type FileInfo struct {
@@ -18,12 +19,12 @@ type FileInfo struct {
 
 func (iv *FileInfo)MarshalBinary() []byte {
 	data := make([]byte, 48 + len(iv.FileName))
-	binary.LittleEndian.PutUint64(data[0:8], iv.Fid)
-	binary.LittleEndian.PutUint64(data[8:16], iv.Offset)
-	binary.LittleEndian.PutUint64(data[16:24], iv.Size)
-	binary.LittleEndian.PutUint64(data[24:32], uint64(iv.Ctime.Unix()))
-	binary.LittleEndian.PutUint64(data[32:40], uint64(iv.Mtime.Unix()))
-	binary.LittleEndian.PutUint64(data[40:48], uint64(iv.Atime.Unix()))
+	binary.BigEndian.PutUint64(data[0:8], iv.Fid)
+	binary.BigEndian.PutUint64(data[8:16], iv.Offset)
+	binary.BigEndian.PutUint64(data[16:24], iv.Size)
+	binary.BigEndian.PutUint64(data[24:32], uint64(iv.Ctime.Unix()))
+	binary.BigEndian.PutUint64(data[32:40], uint64(iv.Mtime.Unix()))
+	binary.BigEndian.PutUint64(data[40:48], uint64(iv.Atime.Unix()))
 	copy(data[48:], []byte(iv.FileName))
 	return data
 }
@@ -35,20 +36,20 @@ func (iv *FileInfo)UnMarshalBinary(data []byte) (err error) {
 		}
 	}()
 
-	iv.Fid = binary.LittleEndian.Uint64(data[0:8])
-	iv.Offset = binary.LittleEndian.Uint64(data[8:16])
-	iv.Size = binary.LittleEndian.Uint64(data[16:24])
-	iv.Ctime = time.Unix(int64(binary.LittleEndian.Uint64(data[24:32])), 0)
-	iv.Mtime = time.Unix(int64(binary.LittleEndian.Uint64(data[32:40])), 0)
-	iv.Atime = time.Unix(int64(binary.LittleEndian.Uint64(data[40:48])), 0)
+	iv.Fid = binary.BigEndian.Uint64(data[0:8])
+	iv.Offset = binary.BigEndian.Uint64(data[8:16])
+	iv.Size = binary.BigEndian.Uint64(data[16:24])
+	iv.Ctime = time.Unix(int64(binary.BigEndian.Uint64(data[24:32])), 0)
+	iv.Mtime = time.Unix(int64(binary.BigEndian.Uint64(data[32:40])), 0)
+	iv.Atime = time.Unix(int64(binary.BigEndian.Uint64(data[40:48])), 0)
 	iv.FileName = string(data[48:])
 	return err
 }
 
 type File struct {
-	volume *Volume
-	Info   *FileInfo
-	offset uint64
+	DataFile *os.File
+	Info     *FileInfo
+	offset   uint64
 }
 
 func (f *File)Read(b []byte) (n int, err error) {
@@ -58,7 +59,7 @@ func (f *File)Read(b []byte) (n int, err error) {
 	if len(b) > int(length) {
 		b = b[:length]
 	}
-	n, err = f.volume.dataFile.ReadAt(b, int64(start))
+	n, err = f.DataFile.ReadAt(b, int64(start))
 	f.offset += uint64(n)
 	return
 }
@@ -71,7 +72,7 @@ func (f *File)Write(b []byte) (n int, err error) {
 		//b = b[:length]
 		return 0, errors.New("you should create a new File to write")
 	}else {
-		n, err = f.volume.dataFile.WriteAt(b, int64(start))
+		n, err = f.DataFile.WriteAt(b, int64(start))
 		return
 	}
 }

@@ -5,14 +5,15 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
-	"encoding/binary"
 	"time"
+	"encoding/binary"
 )
 
 type Volume struct {
 	MaxSize  uint64
 
 	index    Index
+	status   *Status
 	dataFile *os.File
 	rwMutex  sync.RWMutex
 }
@@ -29,7 +30,12 @@ func NewVolume(dir string, vid int) (v *Volume, err error) {
 		return nil, err
 	}
 
-	return v, nil
+	v.status, err = NewStatus(dir, vid)
+	if err != nil {
+		return nil, err
+	}
+
+	return
 }
 
 func (v *Volume)Get(fid uint64) (*File, error) {
@@ -38,15 +44,11 @@ func (v *Volume)Get(fid uint64) (*File, error) {
 
 	fi, err := v.index.Get(fid)
 	if err == nil {
-		return &File{volume: v, Info: fi}, nil
+		return &File{DataFile: v.dataFile, Info: fi}, nil
 	}else {
 		return nil, err
 	}
 }
-
-//func (v *Volume)Add(*File) error {
-//	return nil
-//}
 
 func (v *Volume)Delete(fid uint64) error {
 	v.rwMutex.Lock()
@@ -57,7 +59,8 @@ func (v *Volume)Delete(fid uint64) error {
 		return err
 	}
 
-	err = v.freeSpace(file.Info.Offset, file.Info.Size)
+	//因为文件内容前后都写入fid(8 byte) 要一起释放
+	err = v.status.freeSpace(file.Info.Offset - 8, file.Info.Size + 16)
 	if err != nil {
 		return err
 	}
@@ -66,37 +69,50 @@ func (v *Volume)Delete(fid uint64) error {
 	return err
 }
 
-func (v *Volume)NewFile(size uint64) (*File, error) {
+func (v *Volume)NewFile(size uint64) (f *File, err error) {
 	v.rwMutex.Lock()
 	defer v.rwMutex.Unlock()
 
-	fid := v.newFid()
-	offset, err := v.newSpace(size)
+	fid := v.status.newFid()
+	offset, err := v.status.newSpace(size + 16)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err != nil {
+			if err := v.status.freeSpace(offset, size + 16); err != nil {
+				panic(err)
+			}
+		}
+	}()
+
+	//在文件内容前后都写入fid
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, fid)
+	_, err = v.dataFile.WriteAt(b, int64(offset))
+	if err != nil {
+		return nil, err
+	}
+	_, err = v.dataFile.WriteAt(b, int64(offset + 8 + size))
 	if err != nil {
 		return nil, err
 	}
 
 	fileInfo := &FileInfo{
 		Fid: fid,
-		Offset: offset,
+		Offset: offset + 8,
 		Size: size,
 		Ctime: time.Now(),
 		Mtime: time.Now(),
 		Atime: time.Now(),
 	}
-	return &File{volume: v, Info: fileInfo}, nil
-}
 
-//TODO: newSpace
-func (v *Volume)newSpace(size uint64) (offset uint64, err error) {
-	//此函数不是并发安全
-	return 0, nil
-}
-
-//TODO: freeSpace
-func (v *Volume)freeSpace(offset uint64, size uint64) (err error) {
-	//此函数不是并发安全
-	return nil
+	err = v.index.Set(fileInfo)
+	if err != nil {
+		return nil, err
+	}else {
+		return &File{DataFile: v.dataFile, Info: fileInfo}, nil
+	}
 }
 
 func (v *Volume)truncate() {
@@ -108,27 +124,5 @@ func (v *Volume)truncate() {
 	err = v.dataFile.Truncate(fi.Size() + 4294967296)
 	if err != nil {
 		panic(err)
-	}
-}
-
-func (v *Volume)newFid() (fid uint64) {
-	//此函数不是并发安全
-	configKey := []byte("freeFid")
-	b, err := v.index.getConfig(configKey)
-	if err != nil || b == nil {
-		fid = 0
-		b := make([]byte, 8)
-		b[0] = 1
-		if err := v.index.setConfig(configKey, b); err != nil {
-			panic(err)
-		}
-		return
-	}else {
-		fid = binary.LittleEndian.Uint64(b)
-		binary.LittleEndian.PutUint64(b, fid + 1)
-		if err := v.index.setConfig(configKey, b); err != nil {
-			panic(err)
-		}
-		return
 	}
 }
