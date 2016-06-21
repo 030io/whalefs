@@ -7,6 +7,8 @@ import (
 	"strconv"
 )
 
+var configPrefix = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, '_'}
+
 type LevelDBIndex struct {
 	path string
 	db   *leveldb.DB
@@ -40,4 +42,12 @@ func (l *LevelDBIndex)Delete(fid uint64) error {
 	key := make([]byte, 8)
 	binary.LittleEndian.PutUint64(key, fid)
 	return l.db.Delete(key, nil)
+}
+
+func (l *LevelDBIndex)getConfig(key []byte) ([]byte, error) {
+	return l.db.Get(append(configPrefix, key...), nil)
+}
+
+func (l *LevelDBIndex)setConfig(key, value []byte) error {
+	return l.db.Put(append(configPrefix, key...), value, nil)
 }

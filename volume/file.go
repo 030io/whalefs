@@ -3,6 +3,7 @@ package volume
 import (
 	"time"
 	"encoding/binary"
+	"errors"
 )
 
 type FileInfo struct {
@@ -47,13 +48,46 @@ func (iv *FileInfo)UnMarshalBinary(data []byte) (err error) {
 type File struct {
 	volume *Volume
 	Info   *FileInfo
+	offset uint64
 }
 
-//TODO: read write
 func (f *File)Read(b []byte) (n int, err error) {
-	return 0, nil
+	start := f.Info.Offset + f.offset
+	end := f.Info.Offset + f.Info.Size
+	length := end - start
+	if len(b) > int(length) {
+		b = b[:length]
+	}
+	n, err = f.volume.dataFile.ReadAt(b, int64(start))
+	f.offset += uint64(n)
+	return
 }
 
 func (f *File)Write(b []byte) (n int, err error) {
-	return 0, nil
+	start := f.Info.Offset + f.offset
+	end := f.Info.Offset + f.Info.Size
+	length := end - start
+	if len(b) > int(length) {
+		//b = b[:length]
+		return 0, errors.New("you should create a new File to write")
+	}else {
+		n, err = f.volume.dataFile.WriteAt(b, int64(start))
+		return
+	}
+}
+
+func (f *File)Seek(offset int64, whence int) (int64, error) {
+	switch whence {
+	case 0:
+		f.offset = uint64(offset)
+	case 1:
+		f.offset += uint64(offset)
+	case 2:
+		f.offset = f.Info.Size - uint64(offset)
+	}
+	if f.offset > f.Info.Size {
+		return int64(f.offset), errors.New("offset > file.size")
+	}else {
+		return int64(f.offset), nil
+	}
 }
