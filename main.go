@@ -1,11 +1,8 @@
 package main
 
 import (
-	"github.com/030io/whalefs/volume"
-	"github.com/golang/glog"
+	_ "github.com/030io/whalefs/volume"
 )
 
 func main() {
-	a := volume.Volume{}
-	glog.Info(a)
 }
