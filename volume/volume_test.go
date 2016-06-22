@@ -4,10 +4,13 @@ import (
 	"testing"
 	"io/ioutil"
 	"crypto/sha1"
+	"os"
 )
 
 func TestVolumeAndFile(t *testing.T) {
 	dir, _ := ioutil.TempDir("", "whalefs_test_volume_")
+	defer os.RemoveAll(dir)
+
 	v, err := NewVolume(dir, 0)
 	if err != nil {
 		t.Error(err)

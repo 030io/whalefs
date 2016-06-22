@@ -3,10 +3,12 @@ package volume
 import (
 	"testing"
 	"io/ioutil"
+	"os"
 )
 
 func TestIndexLevelDB(t *testing.T) {
 	dir, _ := ioutil.TempDir("", "test_index_leveldb_")
+	defer os.RemoveAll(dir)
 
 	var (
 		index Index

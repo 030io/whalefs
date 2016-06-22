@@ -86,21 +86,21 @@ func (s *Status)newSpace(size uint64) (offset uint64, err error) {
 
 	transaction.Delete(key, nil)
 
-	key = offsetSize
-	binary.BigEndian.PutUint64(key[1:9], offset)
-	binary.BigEndian.PutUint64(key[9:], freeSize)
+	key = getOffsetSizeKey(offset, freeSize)
+	//binary.BigEndian.PutUint64(key[1:9], offset)
+	//binary.BigEndian.PutUint64(key[9:], freeSize)
 	transaction.Delete(key, nil)
 
 	if freeSize > size {
-		key = reversedsizeOffset
-		binary.BigEndian.PutUint64(key[1:9], (freeSize - size) ^ (^uint64(0)))
-		binary.BigEndian.PutUint64(key[9:], offset + size)
+		key = getReversedsizeOffset(offset + size, freeSize - size)
+		//binary.BigEndian.PutUint64(key[1:9], (freeSize - size) ^ (^uint64(0)))
+		//binary.BigEndian.PutUint64(key[9:], offset + size)
 		transaction.Put(key, nil, nil)
 
-		key = offsetSize
-		binary.BigEndian.PutUint64(key[1:9], offset + size)
-		binary.BigEndian.PutUint64(key[9:], freeSize - size)
-		transaction.Delete(key, nil)
+		key = getOffsetSizeKey(offset + size, freeSize - size)
+		//binary.BigEndian.PutUint64(key[1:9], offset + size)
+		//binary.BigEndian.PutUint64(key[9:], freeSize - size)
+		transaction.Put(key, nil, nil)
 	}
 
 	err = transaction.Commit()
@@ -114,8 +114,8 @@ func (s *Status)freeSpace(offset uint64, size uint64) error {
 	iter := s.db.NewIterator(util.BytesPrefix(offsetSize[:1]), nil)
 	defer iter.Release()
 
-	key := offsetSize
-	binary.BigEndian.PutUint64(key[1:9], offset)
+	key := getOffsetSizeKey(offset, 0)
+	//binary.BigEndian.PutUint64(key[1:9], offset)
 	iter.Seek(key)
 
 	transaction, err := s.db.OpenTransaction()
@@ -133,9 +133,9 @@ func (s *Status)freeSpace(offset uint64, size uint64) error {
 			transaction.Delete(key, nil)
 			size += nSize
 
-			key = reversedsizeOffset
-			binary.BigEndian.PutUint64(key[1:9], nSize ^ (^uint64(0)))
-			binary.BigEndian.PutUint64(key[9:], nOffset)
+			key = getReversedsizeOffset(nOffset, nSize)
+			//binary.BigEndian.PutUint64(key[1:9], nSize ^ (^uint64(0)))
+			//binary.BigEndian.PutUint64(key[9:], nOffset)
 			transaction.Delete(key, nil)
 		}
 	}
@@ -152,22 +152,34 @@ func (s *Status)freeSpace(offset uint64, size uint64) error {
 			offset = pOffset
 			size += pSize
 
-			key = reversedsizeOffset
-			binary.BigEndian.PutUint64(key[1:9], pSize ^ (^uint64(0)))
-			binary.BigEndian.PutUint64(key[9:], pOffset)
+			key = getReversedsizeOffset(pOffset, pSize)
+			//binary.BigEndian.PutUint64(key[1:9], pSize ^ (^uint64(0)))
+			//binary.BigEndian.PutUint64(key[9:], pOffset)
 			transaction.Delete(key, nil)
 		}
 	}
 
-	key = offsetSize
-	binary.BigEndian.PutUint64(key[1:9], offset)
-	binary.BigEndian.PutUint64(key[9:], size)
+	key = getOffsetSizeKey(offset, size)
+	//binary.BigEndian.PutUint64(key[1:9], offset)
+	//binary.BigEndian.PutUint64(key[9:], size)
 	transaction.Put(key, nil, nil)
 
-	key = reversedsizeOffset
-	binary.BigEndian.PutUint64(key[1:9], size ^ (^uint64(0)))
-	binary.BigEndian.PutUint64(key[9:], offset)
+	key = getReversedsizeOffset(offset, size)
+	//binary.BigEndian.PutUint64(key[1:9], size ^ (^uint64(0)))
+	//binary.BigEndian.PutUint64(key[9:], offset)
 	transaction.Put(key, nil, nil)
 
 	return transaction.Commit()
+}
+
+func getOffsetSizeKey(offset, size uint64) []byte {
+	binary.BigEndian.PutUint64(offsetSize[1:9], offset)
+	binary.BigEndian.PutUint64(offsetSize[9:], size)
+	return offsetSize
+}
+
+func getReversedsizeOffset(offset, size uint64) []byte {
+	binary.BigEndian.PutUint64(reversedsizeOffset[9:], offset)
+	binary.BigEndian.PutUint64(reversedsizeOffset[1:9], size ^ (^uint64(0)))
+	return reversedsizeOffset
 }
