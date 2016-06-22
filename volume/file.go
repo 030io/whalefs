@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"os"
+	"io"
 )
 
 type FileInfo struct {
@@ -59,8 +60,12 @@ func (f *File)Read(b []byte) (n int, err error) {
 	if len(b) > int(length) {
 		b = b[:length]
 	}
+
 	n, err = f.DataFile.ReadAt(b, int64(start))
 	f.offset += uint64(n)
+	if f.offset == f.Info.Size {
+		err = io.EOF
+	}
 	return
 }
 

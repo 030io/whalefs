@@ -20,6 +20,13 @@ func NewLevelDBIndex(dir string, vid int) (index *LevelDBIndex, err error) {
 	return index, err
 }
 
+func (l *LevelDBIndex)Has(fid uint64) bool {
+	key := make([]byte, 8)
+	binary.BigEndian.PutUint64(key, fid)
+	_, err := l.db.Get(key, nil)
+	return err == nil
+}
+
 func (l *LevelDBIndex)Get(fid uint64) (*FileInfo, error) {
 	key := make([]byte, 8)
 	binary.BigEndian.PutUint64(key, fid)

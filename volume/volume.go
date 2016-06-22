@@ -76,7 +76,14 @@ func (v *Volume)NewFile(fileName string, size uint64) (f *File, err error) {
 	v.rwMutex.Lock()
 	defer v.rwMutex.Unlock()
 
-	fid := v.status.newFid()
+	var fid uint64
+	for {
+		fid = v.status.newFid()
+		if v.index.Has(fid) == false {
+			break
+		}
+	}
+
 	offset, err := v.newSpace(size + 16)
 	if err != nil {
 		return nil, err
