@@ -9,6 +9,8 @@ import (
 	"encoding/binary"
 )
 
+const truncateSize = 1024 * 1024 * 1024
+
 type Volume struct {
 	MaxSize  uint64
 
@@ -20,6 +22,7 @@ type Volume struct {
 
 func NewVolume(dir string, vid int) (v *Volume, err error) {
 	path := filepath.Join(dir, strconv.Itoa(vid) + ".data")
+	v = new(Volume)
 	v.dataFile, err = os.OpenFile(path, os.O_CREATE | os.O_RDWR, 0666)
 	if err != nil {
 		return nil, err
@@ -35,7 +38,7 @@ func NewVolume(dir string, vid int) (v *Volume, err error) {
 		return nil, err
 	}
 
-	return
+	return v, nil
 }
 
 func (v *Volume)Get(fid uint64) (*File, error) {
@@ -51,13 +54,13 @@ func (v *Volume)Get(fid uint64) (*File, error) {
 }
 
 func (v *Volume)Delete(fid uint64) error {
-	v.rwMutex.Lock()
-	defer v.rwMutex.Unlock()
-
 	file, err := v.Get(fid)
 	if err != nil {
 		return err
 	}
+
+	v.rwMutex.Lock()
+	defer v.rwMutex.Unlock()
 
 	//因为文件内容前后都写入fid(8 byte) 要一起释放
 	err = v.status.freeSpace(file.Info.Offset - 8, file.Info.Size + 16)
@@ -69,12 +72,12 @@ func (v *Volume)Delete(fid uint64) error {
 	return err
 }
 
-func (v *Volume)NewFile(size uint64) (f *File, err error) {
+func (v *Volume)NewFile(fileName string, size uint64) (f *File, err error) {
 	v.rwMutex.Lock()
 	defer v.rwMutex.Unlock()
 
 	fid := v.status.newFid()
-	offset, err := v.status.newSpace(size + 16)
+	offset, err := v.newSpace(size + 16)
 	if err != nil {
 		return nil, err
 	}
@@ -105,6 +108,7 @@ func (v *Volume)NewFile(size uint64) (f *File, err error) {
 		Ctime: time.Now(),
 		Mtime: time.Now(),
 		Atime: time.Now(),
+		FileName: fileName,
 	}
 
 	err = v.index.Set(fileInfo)
@@ -121,13 +125,25 @@ func (v *Volume)truncate() {
 		panic(err)
 	}
 
-	err = v.dataFile.Truncate(fi.Size() + 4294967296)
+	err = v.dataFile.Truncate(fi.Size() + truncateSize)
 	if err != nil {
 		panic(err)
 	}
 
-	err = v.status.freeSpace(uint64(fi.Size()), 4294967296)
+	err = v.status.freeSpace(uint64(fi.Size()), truncateSize)
 	if err != nil {
 		panic(err)
 	}
+}
+
+func (v *Volume)newSpace(size uint64) (uint64, error) {
+	offset, err := v.status.newSpace(size)
+	if err == nil {
+		return offset, err
+	}
+
+	//TODO: check max size before truncate
+	v.truncate()
+
+	return v.status.newSpace(size)
 }
