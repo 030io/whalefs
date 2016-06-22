@@ -2,17 +2,25 @@ package volume
 
 import (
 	"github.com/syndtr/goleveldb/leveldb"
-	"path/filepath"
-	"strconv"
 	"sync"
 	"encoding/binary"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	"errors"
+	"path/filepath"
+	"strconv"
 )
 
-var fidKey = []byte("\x00freeFid") //key="\x00freeFid" value=uint64(big endian 8byte)
-var freeSpacePrefix = []byte("\x01FS") //key="\x02FS"+"offset(big endian 8byte)" value=size(big endian 8byte)
-//var freeSpaceSizePrefix = []byte("\x02FSS") //"\x01FSS"+"size(big endian 8byte)"
+var fidKey []byte //key="\x00" value=uint64(big endian 8byte)
+var reversedsizeOffset []byte //key= "\x01"+Reversesize(8 byte)+offset(8 byte) value=[]
+var offsetSize []byte //key= "\x02"+offset(8 byte)+size(8 byte) value=[]
+
+func init() {
+	reversedsizeOffset = make([]byte, 1 + 16)
+	offsetSize = make([]byte, 1 + 16)
+	fidKey = []byte{'\x00'}
+	reversedsizeOffset[0] = '\x01'
+	offsetSize[0] = '\x02'
+}
 
 type Status struct {
 	path       string
@@ -55,55 +63,59 @@ func (s *Status)newSpace(size uint64) (offset uint64, err error) {
 	s.spaceMutex.Lock()
 	defer s.spaceMutex.Unlock()
 
-	iter := s.db.NewIterator(util.BytesPrefix(freeSpacePrefix), nil)
+	//这里根据size倒序存储,使最大的空间最先被获取
+	iter := s.db.NewIterator(util.BytesPrefix(reversedsizeOffset[:1]), nil)
 	defer iter.Release()
 
-	for iter.Next() {
-		offset = binary.BigEndian.Uint64(iter.Key()[len(freeSpacePrefix):])
-		freeSize := binary.BigEndian.Uint64(iter.Value())
-		if freeSize < size {
-			continue
-		}
-
-		transaction, err := s.db.OpenTransaction()
-		if err != nil {
-			return 0, err
-		}
-
-		transaction.Delete(iter.Key(), nil)
-
-		if freeSize != size {
-			key := make([]byte, 8)
-			binary.BigEndian.PutUint64(key, offset + size)
-			key = append(freeSpacePrefix, key...)
-
-			value := make([]byte, 8)
-			binary.BigEndian.PutUint64(value, freeSize - size)
-
-			transaction.Put(key, value, nil)
-		}
-
-		err = transaction.Commit()
-		if err != nil {
-			return 0, err
-		}
-
-		return offset, nil
+	iter.Next()
+	key := iter.Key()
+	if len(key) == 0 {
+		return 0, errors.New("can't get free space")
 	}
 
-	return 0, errors.New("can't new space: no free space")
+	freeSize := binary.BigEndian.Uint64(key[1:9]) ^ (^uint64(0))
+	if freeSize < size {
+		return 0, errors.New("can't get free space")
+	}
+	offset = binary.BigEndian.Uint64(key[9:])
+
+	transaction, err := s.db.OpenTransaction()
+	if err != nil {
+		return 0, err
+	}
+
+	transaction.Delete(key, nil)
+
+	key = offsetSize
+	binary.BigEndian.PutUint64(key[1:9], offset)
+	binary.BigEndian.PutUint64(key[9:], freeSize)
+	transaction.Delete(key, nil)
+
+	if freeSize > size {
+		key = reversedsizeOffset
+		binary.BigEndian.PutUint64(key[1:9], (freeSize - size) ^ (^uint64(0)))
+		binary.BigEndian.PutUint64(key[9:], offset + size)
+		transaction.Put(key, nil, nil)
+
+		key = offsetSize
+		binary.BigEndian.PutUint64(key[1:9], offset + size)
+		binary.BigEndian.PutUint64(key[9:], freeSize - size)
+		transaction.Delete(key, nil)
+	}
+
+	err = transaction.Commit()
+	return offset, err
 }
 
 func (s *Status)freeSpace(offset uint64, size uint64) error {
 	s.spaceMutex.Lock()
 	defer s.spaceMutex.Unlock()
 
-	iter := s.db.NewIterator(util.BytesPrefix(freeSpacePrefix), nil)
+	iter := s.db.NewIterator(util.BytesPrefix(offsetSize[:1]), nil)
 	defer iter.Release()
 
-	key := make([]byte, 8)
-	binary.BigEndian.PutUint64(key, offset)
-	key = append(freeSpacePrefix, key...)
+	key := offsetSize
+	binary.BigEndian.PutUint64(key[1:9], offset)
 	iter.Seek(key)
 
 	transaction, err := s.db.OpenTransaction()
@@ -112,37 +124,50 @@ func (s *Status)freeSpace(offset uint64, size uint64) error {
 	}
 
 	key = iter.Key()
-	if len(key) == len(freeSpacePrefix) + 8 {
-		nOffset := binary.BigEndian.Uint64(key[len(freeSpacePrefix):])
+	if len(key) != 0 {
+		nOffset := binary.BigEndian.Uint64(key[1:9])
+		nSize := binary.BigEndian.Uint64(key[9:])
 		if nOffset < offset + size {
-			return errors.New("that is impossible")
+			panic(errors.New("that is impossible"))
 		}else if nOffset == offset + size {
 			transaction.Delete(key, nil)
-			size += binary.BigEndian.Uint64(iter.Value())
+			size += nSize
+
+			key = reversedsizeOffset
+			binary.BigEndian.PutUint64(key[1:9], nSize ^ (^uint64(0)))
+			binary.BigEndian.PutUint64(key[9:], nOffset)
+			transaction.Delete(key, nil)
 		}
 	}
 
 	iter.Prev()
 	key = iter.Key()
-	if len(key) == len(freeSpacePrefix) + 8 {
-		pOffset := binary.BigEndian.Uint64(key[len(freeSpacePrefix):])
-		pSize := binary.BigEndian.Uint64(iter.Value())
+	if len(key) != 0 {
+		pOffset := binary.BigEndian.Uint64(key[1:9])
+		pSize := binary.BigEndian.Uint64(key[9:])
 		if pOffset + pSize > offset {
-			return errors.New("that is impossible")
+			panic(errors.New("that is impossible"))
 		}else if pOffset + pSize == offset {
 			transaction.Delete(key, nil)
 			offset = pOffset
 			size += pSize
+
+			key = reversedsizeOffset
+			binary.BigEndian.PutUint64(key[1:9], pSize ^ (^uint64(0)))
+			binary.BigEndian.PutUint64(key[9:], pOffset)
+			transaction.Delete(key, nil)
 		}
 	}
 
-	key = make([]byte, 8)
-	binary.BigEndian.PutUint64(key, offset)
-	key = append(freeSpacePrefix, key...)
+	key = offsetSize
+	binary.BigEndian.PutUint64(key[1:9], offset)
+	binary.BigEndian.PutUint64(key[9:], size)
+	transaction.Put(key, nil, nil)
 
-	value := make([]byte, 8)
-	binary.BigEndian.PutUint64(value, size)
-	transaction.Put(key, value, nil)
+	key = reversedsizeOffset
+	binary.BigEndian.PutUint64(key[1:9], size ^ (^uint64(0)))
+	binary.BigEndian.PutUint64(key[9:], offset)
+	transaction.Put(key, nil, nil)
 
 	return transaction.Commit()
 }

@@ -27,12 +27,12 @@ func (l *LevelDBIndex)Get(fid uint64) (*FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	index := new(FileInfo)
-	return index, index.UnMarshalBinary(data)
+	fi := new(FileInfo)
+	return fi, fi.UnMarshalBinary(data)
 }
 
-func (l *LevelDBIndex)Set(iv *FileInfo) error {
-	data := iv.MarshalBinary()
+func (l *LevelDBIndex)Set(fi *FileInfo) error {
+	data := fi.MarshalBinary()
 	return l.db.Put(data[:8], data, nil)
 }
 

@@ -125,4 +125,9 @@ func (v *Volume)truncate() {
 	if err != nil {
 		panic(err)
 	}
+
+	err = v.status.freeSpace(uint64(fi.Size()), 4294967296)
+	if err != nil {
+		panic(err)
+	}
 }
