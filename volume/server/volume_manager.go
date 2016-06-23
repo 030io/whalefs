@@ -1,4 +1,4 @@
-package api
+package server
 
 import (
 	"net/http"
@@ -7,10 +7,16 @@ import (
 	"io/ioutil"
 	"strings"
 	"strconv"
+	"fmt"
 )
 
 type VolumeManager struct {
+	DataDir      string
 	Volumes      map[int]*volume.Volume
+	AdminPort    int
+	AdminHost    string
+	PublicPort   int
+	PublicHost   string
 	AdminServer  *http.ServeMux
 	PublicServer *http.ServeMux
 }
@@ -21,8 +27,7 @@ func NewVolumeManager(dir string) (*VolumeManager, error) {
 	}
 
 	vm := new(VolumeManager)
-	vm.AdminServer = http.NewServeMux()
-	vm.PublicServer = http.NewServeMux()
+	vm.DataDir = dir
 
 	fileInfos, err := ioutil.ReadDir(dir)
 	if err != nil {
@@ -41,10 +46,30 @@ func NewVolumeManager(dir string) (*VolumeManager, error) {
 		}
 	}
 
+	vm.Volumes = make(map[int]*volume.Volume)
+
+	vm.AdminPort = 7800
+	vm.AdminHost = "localhost"
+	vm.PublicPort = 7900
+	vm.PublicHost = "localhost"
+
+	vm.AdminServer = http.NewServeMux()
+	vm.PublicServer = http.NewServeMux()
+	vm.PublicServer.HandleFunc("/", vm.publicEntry)
+	vm.AdminServer.HandleFunc("/", vm.adminEntry)
 	return vm, nil
 }
 
-//TODO: init handlers
-func (vm *VolumeManager)initHandlers() {
-	vm.PublicServer.HandleFunc("/", vm.publicEntry)
+func (vm *VolumeManager)Start() {
+	go func() {
+		err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", vm.AdminPort), vm.AdminServer)
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", vm.PublicPort), vm.PublicServer)
+	if err != nil {
+		panic(err)
+	}
 }
