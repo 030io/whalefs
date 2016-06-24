@@ -18,7 +18,7 @@ func TestVolumeAndFile(t *testing.T) {
 
 	for i := 1; i < 100; i++ {
 		size := uint64(1024)
-		file, err := v.NewFile("test_file.1", size)
+		file, err := v.NewFile(uint64(i), "test_file.1", size)
 		if err != nil {
 			t.Error(err)
 		}
@@ -40,7 +40,7 @@ func TestVolumeAndFile(t *testing.T) {
 			t.Error("data wrong")
 		}
 
-		err = v.Delete(file.Info.Fid)
+		err = v.Delete(file.Info.Fid, "test_file.1")
 		if err != nil {
 			t.Error(err)
 		}

@@ -1,4 +1,4 @@
-package server
+package manager
 
 import (
 	"net/http"
@@ -71,5 +71,11 @@ func (vm *VolumeManager)Start() {
 	err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", vm.PublicPort), vm.PublicServer)
 	if err != nil {
 		panic(err)
+	}
+}
+
+func (vm *VolumeManager)Stop() {
+	for _, v := range vm.Volumes {
+		v.Close()
 	}
 }

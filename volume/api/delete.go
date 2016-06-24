@@ -7,7 +7,6 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/errors"
 )
 
-//TODO: delete
 func DeleteFile(host string, port int, vid int, fid uint64, filename string) error {
 	url := fmt.Sprintf("http://%s:%d/%d/%d/%s", host, port, vid, fid, filename)
 	req, _ := http.NewRequest(http.MethodDelete, url, nil)

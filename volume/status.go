@@ -10,23 +10,23 @@ import (
 	"strconv"
 )
 
-var fidKey []byte //key="\x00" value=uint64(big endian 8byte)
+//var fidKey []byte //key="\x00" value=uint64(big endian 8byte)
 var reversedsizeOffset []byte //key= "\x01"+Reversesize(8 byte)+offset(8 byte) value=[]
 var offsetSize []byte //key= "\x02"+offset(8 byte)+size(8 byte) value=[]
 
 func init() {
 	reversedsizeOffset = make([]byte, 1 + 16)
 	offsetSize = make([]byte, 1 + 16)
-	fidKey = []byte{'\x00'}
-	reversedsizeOffset[0] = '\x01'
-	offsetSize[0] = '\x02'
+	//fidKey = []byte{'\x00'}
+	reversedsizeOffset[0] = '\x11'
+	offsetSize[0] = '\x22'
 }
 
 type Status struct {
 	path       string
 	db         *leveldb.DB
 
-	fidMutex   sync.Mutex
+	//fidMutex   sync.Mutex
 	spaceMutex sync.Mutex
 }
 
@@ -38,26 +38,26 @@ func NewStatus(dir string, vid int) (status *Status, err error) {
 	return status, err
 }
 
-func (s *Status)newFid() (fid uint64) {
-	s.fidMutex.Lock()
-	defer s.fidMutex.Unlock()
-
-	b, err := s.db.Get(fidKey, nil)
-	if err != nil || b == nil {
-		fid = 0
-		b = make([]byte, 8)
-	}else {
-		fid = binary.BigEndian.Uint64(b)
-	}
-
-	binary.BigEndian.PutUint64(b, fid + 1)
-	err = s.db.Put(fidKey, b, nil)
-	if err != nil {
-		panic(err)
-	}
-
-	return
-}
+//func (s *Status)newFid() (fid uint64) {
+//	s.fidMutex.Lock()
+//	defer s.fidMutex.Unlock()
+//
+//	b, err := s.db.Get(fidKey, nil)
+//	if err != nil || b == nil {
+//		fid = 0
+//		b = make([]byte, 8)
+//	}else {
+//		fid = binary.BigEndian.Uint64(b)
+//	}
+//
+//	binary.BigEndian.PutUint64(b, fid + 1)
+//	err = s.db.Put(fidKey, b, nil)
+//	if err != nil {
+//		panic(err)
+//	}
+//
+//	return
+//}
 
 func (s *Status)newSpace(size uint64) (offset uint64, err error) {
 	s.spaceMutex.Lock()
@@ -87,19 +87,13 @@ func (s *Status)newSpace(size uint64) (offset uint64, err error) {
 	transaction.Delete(key, nil)
 
 	key = getOffsetSizeKey(offset, freeSize)
-	//binary.BigEndian.PutUint64(key[1:9], offset)
-	//binary.BigEndian.PutUint64(key[9:], freeSize)
 	transaction.Delete(key, nil)
 
 	if freeSize > size {
 		key = getReversedsizeOffset(offset + size, freeSize - size)
-		//binary.BigEndian.PutUint64(key[1:9], (freeSize - size) ^ (^uint64(0)))
-		//binary.BigEndian.PutUint64(key[9:], offset + size)
 		transaction.Put(key, nil, nil)
 
 		key = getOffsetSizeKey(offset + size, freeSize - size)
-		//binary.BigEndian.PutUint64(key[1:9], offset + size)
-		//binary.BigEndian.PutUint64(key[9:], freeSize - size)
 		transaction.Put(key, nil, nil)
 	}
 
@@ -115,7 +109,6 @@ func (s *Status)freeSpace(offset uint64, size uint64) error {
 	defer iter.Release()
 
 	key := getOffsetSizeKey(offset, 0)
-	//binary.BigEndian.PutUint64(key[1:9], offset)
 	iter.Seek(key)
 
 	transaction, err := s.db.OpenTransaction()
@@ -134,8 +127,6 @@ func (s *Status)freeSpace(offset uint64, size uint64) error {
 			size += nSize
 
 			key = getReversedsizeOffset(nOffset, nSize)
-			//binary.BigEndian.PutUint64(key[1:9], nSize ^ (^uint64(0)))
-			//binary.BigEndian.PutUint64(key[9:], nOffset)
 			transaction.Delete(key, nil)
 		}
 	}
@@ -153,20 +144,14 @@ func (s *Status)freeSpace(offset uint64, size uint64) error {
 			size += pSize
 
 			key = getReversedsizeOffset(pOffset, pSize)
-			//binary.BigEndian.PutUint64(key[1:9], pSize ^ (^uint64(0)))
-			//binary.BigEndian.PutUint64(key[9:], pOffset)
 			transaction.Delete(key, nil)
 		}
 	}
 
 	key = getOffsetSizeKey(offset, size)
-	//binary.BigEndian.PutUint64(key[1:9], offset)
-	//binary.BigEndian.PutUint64(key[9:], size)
 	transaction.Put(key, nil, nil)
 
 	key = getReversedsizeOffset(offset, size)
-	//binary.BigEndian.PutUint64(key[1:9], size ^ (^uint64(0)))
-	//binary.BigEndian.PutUint64(key[9:], offset)
 	transaction.Put(key, nil, nil)
 
 	return transaction.Commit()

@@ -1,4 +1,4 @@
-package server
+package manager
 
 import (
 	"net/http"
@@ -39,10 +39,6 @@ func (vm *VolumeManager)publicEntry(w http.ResponseWriter, r *http.Request) {
 
 func (vm *VolumeManager)publicReadFile(w http.ResponseWriter, r *http.Request) {
 	match := publicUrlRegex.FindStringSubmatch(r.URL.Path)
-	//if len(match) != 4 {
-	//	http.Error(w, r.URL.String() + " can't match", http.StatusInternalServerError)
-	//	return
-	//}
 
 	vid, _ := strconv.Atoi(match[1])
 	volume := vm.Volumes[vid]

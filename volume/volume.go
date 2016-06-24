@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 	"encoding/binary"
+	"fmt"
 )
 
 const truncateSize = 1024 * 1024 * 1024
@@ -53,10 +54,12 @@ func (v *Volume)Get(fid uint64) (*File, error) {
 	}
 }
 
-func (v *Volume)Delete(fid uint64) error {
+func (v *Volume)Delete(fid uint64, fileName string) error {
 	file, err := v.Get(fid)
 	if err != nil {
 		return err
+	}else if file.Info.FileName != fileName {
+		return fmt.Errorf("%s != %s", file.Info.FileName, fileName)
 	}
 
 	v.rwMutex.Lock()
@@ -72,17 +75,17 @@ func (v *Volume)Delete(fid uint64) error {
 	return err
 }
 
-func (v *Volume)NewFile(fileName string, size uint64) (f *File, err error) {
+func (v *Volume)NewFile(fid uint64, fileName string, size uint64) (f *File, err error) {
 	v.rwMutex.Lock()
 	defer v.rwMutex.Unlock()
 
-	var fid uint64
-	for {
-		fid = v.status.newFid()
-		if v.index.Has(fid) == false {
-			break
-		}
-	}
+	//var fid uint64
+	//for {
+	//	fid = v.status.newFid()
+	//	if v.index.Has(fid) == false {
+	//		break
+	//	}
+	//}
 
 	offset, err := v.newSpace(size + 16)
 	if err != nil {
@@ -149,8 +152,19 @@ func (v *Volume)newSpace(size uint64) (uint64, error) {
 		return offset, err
 	}
 
-	//TODO: check max size before truncate
 	v.truncate()
 
 	return v.status.newSpace(size)
+}
+
+func (v *Volume)Close() {
+	v.rwMutex.Lock()
+	//因为要退出,所以不解锁,禁止读写
+	//defer v.rwMutex.Unlock()
+
+	//将所有资源释放
+	v.dataFile.Close()
+	v.dataFile = nil
+	v.status = nil
+	v.index = nil
 }
