@@ -1,14 +1,17 @@
 package api
 
 import (
-	"net/http"
 	"fmt"
+	"net/http"
 	"io/ioutil"
-	"github.com/syndtr/goleveldb/leveldb/errors"
+	"errors"
 )
 
-func Delete(host string, port int, vid int, fid uint64, filename string) error {
-	url := fmt.Sprintf("http://%s:%d/%d/%d/%s", host, port, vid, fid, filename)
+func Delete(host string, port int, filePath string) error {
+	if filePath[0] == '/' {
+		filePath = filePath[1:]
+	}
+	url := fmt.Sprintf("http://%s:%d/%s", host, port, filePath)
 	req, _ := http.NewRequest(http.MethodDelete, url, nil)
 
 	resp, err := http.DefaultClient.Do(req)

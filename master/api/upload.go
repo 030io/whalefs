@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"os"
 	"bytes"
 	"mime/multipart"
@@ -8,18 +9,20 @@ import (
 	"io"
 	"net/http"
 	"errors"
-	"fmt"
 	"io/ioutil"
-//"github.com/030io/whalefs/volume/manager"
-//"encoding/json"
 )
 
-func Upload(host string, port int, vid int, fid uint64, filePath string, fileName string) (err error) {
+func Upload(host string, port int, filePath string, fileName string) (err error) {
 	if fileName == "" {
 		fileName = filepath.Base(filePath)
 	}
 
-	url := fmt.Sprintf("http://%s:%d/%d/%d/%s", host, port, vid, fid, fileName)
+	var url string
+	if filePath[0] == '/'{
+		url = fmt.Sprintf("http://%s:%d%s", host, port, filePath)
+	}else {
+		url = fmt.Sprintf("http://%s:%d/%s", host, port, filePath)
+	}
 	file, err := os.Open(filePath)
 	if os.IsNotExist(err) {
 		return

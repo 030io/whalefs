@@ -4,7 +4,12 @@ import (
 	"net/http"
 	"fmt"
 	"sync"
+	"math/rand"
+	"strconv"
 )
+
+const vidKey = "__vid"
+const fidKey = "__fid"
 
 type Master struct {
 	Port           int
@@ -14,6 +19,8 @@ type Master struct {
 
 	Server         *http.ServeMux
 	serverMutex    sync.RWMutex
+
+	Metadata       Metadata
 }
 
 func NewMaster() (*Master, error) {
@@ -24,6 +31,7 @@ func NewMaster() (*Master, error) {
 
 	m.Server = http.NewServeMux()
 	m.Server.HandleFunc("/", m.masterEntry)
+
 	return m, nil
 }
 
@@ -38,18 +46,27 @@ func (m *Master)Stop() {
 	m.serverMutex.Lock()
 }
 
-////TODO: check replication
-//func (m *Master)VolumeIsWritable(vid int) bool {
-//	vStatusList := m.VStatusListMap[vid]
-//	if vStatusList == nil {
-//		return false
-//	}
-//
-//	for _, vStatus := range vStatusList {
-//		if !vStatus.Writable || !vStatus.vmStatus.IsAlive() {
-//			return false
-//		}
-//	}
-//
-//	return true
-//}
+func (m *Master)getWritableVolumes() []*VolumeStatus {
+	for _, vStatusList := range m.VStatusListMap {
+		return vStatusList
+	}
+	return nil
+}
+
+func (m *Master)generateFid() uint64 {
+	value, err := m.Metadata.getConfig(fidKey)
+	if err != nil {
+		value = "0"
+	}
+	fid, _ := strconv.ParseUint(value, 10, 64)
+	for i := 0; i < 3; i++ {
+		err = m.Metadata.setConfig(fidKey, strconv.FormatUint(fid + 1, 10))
+		if err == nil {
+			break
+		}
+	}
+	if err != nil {
+		panic(err)
+	}
+	return uint64(rand.Uint32())
+}

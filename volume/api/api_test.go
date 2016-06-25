@@ -43,7 +43,7 @@ func TestAPI(t *testing.T) {
 	}
 
 	//test get file
-	data, err := api.GetFile(vm.PublicHost, vm.PublicPort, testVid, testFid, fileName)
+	data, err := api.Get(vm.PublicHost, vm.PublicPort, testVid, testFid, fileName)
 	if err != nil {
 		t.Error(err)
 	}
@@ -53,12 +53,12 @@ func TestAPI(t *testing.T) {
 	}
 
 	//test delete file
-	err = api.DeleteFile(vm.AdminHost, vm.AdminPort, testVid, testFid, fileName)
+	err = api.Delete(vm.AdminHost, vm.AdminPort, testVid, testFid, fileName)
 	if err != nil {
 		t.Error(err)
 	}
 
-	_, err = api.GetFile(vm.PublicHost, vm.PublicPort, testVid, testFid, fileName)
+	_, err = api.Get(vm.PublicHost, vm.PublicPort, testVid, testFid, fileName)
 	if err == nil {
 		t.Error(err)
 	}

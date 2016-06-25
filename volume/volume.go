@@ -8,6 +8,7 @@ import (
 	"time"
 	"encoding/binary"
 	"fmt"
+	"errors"
 )
 
 const truncateSize = 1024 * 1024 * 1024
@@ -89,6 +90,9 @@ func (v *Volume)NewFile(fid uint64, fileName string, size uint64) (f *File, err 
 	//		break
 	//	}
 	//}
+	if v.index.Has(fid) {
+		return nil, errors.New("fid is existed")
+	}
 
 	offset, err := v.newSpace(size + 16)
 	if err != nil {
