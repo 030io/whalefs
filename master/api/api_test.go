@@ -1,4 +1,4 @@
-package main
+package api_test
 
 import (
 	"testing"
@@ -40,3 +40,4 @@ func TestHeartbeat(t *testing.T) {
 		t.Errorf("len(m.VStatusListMap) == 0")
 	}
 }
+
