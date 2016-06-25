@@ -13,17 +13,20 @@ import (
 const truncateSize = 1024 * 1024 * 1024
 
 type Volume struct {
-	MaxSize  uint64
+	Id           int
+	MaxSize      uint64
+	DataFileSize uint64
 
-	index    Index
-	status   *Status
-	dataFile *os.File
-	rwMutex  sync.RWMutex
+	index        Index
+	status       *Status
+	dataFile     *os.File
+	rwMutex      sync.RWMutex
 }
 
 func NewVolume(dir string, vid int) (v *Volume, err error) {
 	path := filepath.Join(dir, strconv.Itoa(vid) + ".data")
 	v = new(Volume)
+	v.Id = vid
 	v.dataFile, err = os.OpenFile(path, os.O_CREATE | os.O_RDWR, 0666)
 	if err != nil {
 		return nil, err
@@ -144,6 +147,8 @@ func (v *Volume)truncate() {
 	if err != nil {
 		panic(err)
 	}
+
+	v.DataFileSize = uint64(fi.Size() + truncateSize)
 }
 
 func (v *Volume)newSpace(size uint64) (uint64, error) {

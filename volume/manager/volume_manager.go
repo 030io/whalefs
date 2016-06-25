@@ -8,17 +8,26 @@ import (
 	"strings"
 	"strconv"
 	"fmt"
+	"time"
+	"github.com/030io/whalefs/master/api"
+	"github.com/030io/whalefs/master"
 )
+
+const MaxHeartbeatDuration time.Duration = time.Second * 5
 
 type VolumeManager struct {
 	DataDir      string
 	Volumes      map[int]*volume.Volume
+
 	AdminPort    int
 	AdminHost    string
 	PublicPort   int
 	PublicHost   string
 	AdminServer  *http.ServeMux
 	PublicServer *http.ServeMux
+
+	MasterHost   string
+	MasterPort   int
 }
 
 func NewVolumeManager(dir string) (*VolumeManager, error) {
@@ -57,10 +66,15 @@ func NewVolumeManager(dir string) (*VolumeManager, error) {
 	vm.PublicServer = http.NewServeMux()
 	vm.PublicServer.HandleFunc("/", vm.publicEntry)
 	vm.AdminServer.HandleFunc("/", vm.adminEntry)
+
+	vm.MasterHost = "localhost"
+	vm.MasterPort = 7999
 	return vm, nil
 }
 
 func (vm *VolumeManager)Start() {
+	go vm.Heartbeat()
+
 	go func() {
 		err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", vm.AdminPort), vm.AdminServer)
 		if err != nil {
@@ -79,3 +93,28 @@ func (vm *VolumeManager)Stop() {
 		v.Close()
 	}
 }
+
+func (vm *VolumeManager)Heartbeat() {
+	tick := time.NewTicker(MaxHeartbeatDuration)
+	defer tick.Stop()
+	for {
+		vms := new(master.VolumeManagerStatus)
+		vms.AdminHost = vm.AdminHost
+		vms.AdminPort = vm.AdminPort
+		vms.PublicHost = vm.PublicHost
+		vms.PublicPort = vm.PublicPort
+		vms.VStatusList = make([]*master.VolumeStatus, 0, len(vm.Volumes))
+
+		for vid, v := range vm.Volumes {
+			vs := new(master.VolumeStatus)
+			vs.Id = vid
+			vs.DataFileSize = v.DataFileSize
+			vms.VStatusList = append(vms.VStatusList, vs)
+		}
+
+		api.Heartbeat(vm.MasterHost, vm.MasterPort, vms)
+		<-tick.C
+	}
+}
+
+
