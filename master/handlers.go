@@ -5,9 +5,8 @@ import (
 	"io/ioutil"
 	"encoding/json"
 	"time"
-//"net/url"
-//"fmt"
-	"path/filepath"
+	"strings"
+	"sync"
 )
 
 func (m *Master)masterEntry(w http.ResponseWriter, r *http.Request) {
@@ -24,7 +23,7 @@ func (m *Master)masterEntry(w http.ResponseWriter, r *http.Request) {
 		}
 
 		switch r.Method{
-		case http.MethodGet:
+		case http.MethodGet, http.MethodHead:
 			m.getFile(w, r)
 		case http.MethodPost:
 			m.uploadFile(w, r)
@@ -41,6 +40,17 @@ func (m *Master)heartbeat(w http.ResponseWriter, r *http.Request) {
 	newVms := new(VolumeManagerStatus)
 	json.Unmarshal(body, newVms)
 	newVms.LastHeartbeat = time.Now()
+
+	remoteIP := r.RemoteAddr[:strings.LastIndex(r.RemoteAddr, ":")]
+	if newVms.AdminHost == "" || newVms.AdminHost == "localhost" {
+		newVms.AdminHost = remoteIP
+	}
+	if newVms.PublicHost == "" || newVms.PublicHost == "localhost" {
+		newVms.PublicHost = remoteIP
+	}
+	if newVms.Machine == "" {
+		newVms.Machine = remoteIP
+	}
 
 	m.serverMutex.RUnlock()
 	defer m.serverMutex.RLock()
@@ -85,44 +95,77 @@ func (m *Master)getFile(w http.ResponseWriter, r *http.Request) {
 
 	vStatusList, ok := m.VStatusListMap[vid]
 	if !ok {
-		http.Error(w, "", http.StatusNotFound)
+		http.Error(w, "can't find volume", http.StatusNotFound)
+		return
 	}
 
-	//TODO: http 300
-	vStatus := vStatusList[0]
-	http.Redirect(w, r, vStatus.getFileUrl(fid, fileName), http.StatusFound)
+	randVStatusList := make([]*VolumeStatus, len(vStatusList))
+	copy(randVStatusList, vStatusList)
+	for _, vStatus := range randVStatusList {
+		if vStatus.vmStatus.IsAlive() {
+			println(vStatus.vmStatus.PublicPort)
+			http.Redirect(w, r, vStatus.getFileUrl(fid, fileName), http.StatusFound)
+			return
+		}
+	}
+
+	http.Error(w, "all volumes is dead", http.StatusInternalServerError)
 }
 
 func (m *Master)uploadFile(w http.ResponseWriter, r *http.Request) {
 	//如果存在则删除旧文件,再上传新文件
-	vid, fid, fileName, err := m.Metadata.Get(r.URL.Path)
-	if err == nil {
-		vStatusList := m.VStatusListMap[vid]
-		vStatus := vStatusList[0]
-		err = vStatus.delete(fid, fileName)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		m.Metadata.Delete(r.URL.Path)
-	}
-
-	vStatusList := m.getWritableVolumes()
-	if len(vStatusList) == 0 {
-		http.Error(w, "not writable volumes", http.StatusInternalServerError)
+	//vid, fid, fileName, err := m.Metadata.Get(r.URL.Path)
+	//if err == nil {
+	//	vStatusList := m.VStatusListMap[vid]
+	//	vStatus := vStatusList[0]
+	//	err = vStatus.delete(fid, fileName)
+	//	if err != nil {
+	//		http.Error(w, err.Error(), http.StatusInternalServerError)
+	//		return
+	//	}
+	//	m.Metadata.Delete(r.URL.Path)
+	//}
+	if m.Metadata.Has(r.URL.Path) {
+		http.Error(w, "file is existed, you should delete it at first.", http.StatusNotAcceptable)
 		return
 	}
 
-	//TODO: replicate
-	vStatus := vStatusList[0]
-	fid = m.generateFid()
-	err = vStatus.uploadWithHTTP(r, fid, filepath.Base(r.URL.Path))
+	vStatusList, err := m.getWritableVolumes()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	m.Metadata.Set(r.URL.Path, vStatus.Id, fid, filepath.Base(r.URL.Path))
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	data, _ := ioutil.ReadAll(file)
+	fid := m.generateFid()
+	wg := sync.WaitGroup{}
+
+	for _, vStatus := range vStatusList {
+		wg.Add(1)
+		go func(vs *VolumeStatus) {
+			e := vs.uploadFile(fid, header.Filename, data)
+			if e != nil {
+				err = e
+			}
+			wg.Done()
+		}(vStatus)
+	}
+	wg.Wait()
+	if err != nil {
+		for _, vStatus := range vStatusList {
+			go vStatus.delete(fid, header.Filename)
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	m.Metadata.Set(r.URL.Path, vStatusList[0].Id, fid, header.Filename)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -141,15 +184,12 @@ func (m *Master)deleteFile(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		http.NotFound(w, r)
 		return
+	}else if !m.vStatusListIsValid(vStatusList) {
+		http.Error(w, "can't delete file, because it's(volumes) readonly.", http.StatusNotAcceptable)
 	}
 
-	vStatus := vStatusList[0]
-	//TODO: replicate
-	err = vStatus.delete(fid, fileName)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}else {
+	for _, vStatus := range vStatusList {
+		go vStatus.delete(fid, fileName)
 		m.Metadata.Delete(r.URL.Path)
 		http.Error(w, "", http.StatusAccepted)
 	}

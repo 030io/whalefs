@@ -56,6 +56,11 @@ func (m *MetadataRedis)Delete(filePath string) error {
 	return err
 }
 
+func (m *MetadataRedis)Has(filePath string) bool {
+	_, err := m.client.Get(filePath).Result()
+	return err != redis.Nil
+}
+
 func (m *MetadataRedis)setConfig(key string, value string) error {
 	_, err := m.client.Set(key, value).Result()
 	return err

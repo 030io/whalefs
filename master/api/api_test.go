@@ -6,9 +6,11 @@ import (
 	"io/ioutil"
 	"os"
 	"github.com/030io/whalefs/volume/manager"
-	"github.com/030io/whalefs/volume"
+//"github.com/030io/whalefs/volume"
 	"time"
 	"github.com/030io/whalefs/master/api"
+	"net/http"
+	"fmt"
 )
 
 func TestAPI(t *testing.T) {
@@ -16,6 +18,7 @@ func TestAPI(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	m.Metadata, _ = master.NewMetadataRedis("localhost", 6379, "", 0)
 
 	go m.Start()
 
@@ -29,22 +32,23 @@ func TestAPI(t *testing.T) {
 
 	vm.AdminPort = 7801
 	vm.PublicPort = 7901
-	vm.Volumes[0], _ = volume.NewVolume(dir, 0)
+	vm.MasterPort = m.Port
+
+	//test heartbeat
+	//vm.Volumes[0], _ = volume.NewVolume(dir, 0)
 	go vm.Start()
 
 	//test heartbeat
 	time.Sleep(time.Second / 10)
 
 	if len(m.VMStatusList) == 0 {
-		t.Errorf("len(m.VMStatusList) == 0")
+		t.Error("len(m.VMStatusList) == 0")
 	}
-	if len(m.VStatusListMap) == 0 {
-		t.Errorf("len(m.VStatusListMap) == 0")
-	}
+	//if len(m.VStatusListMap) == 0 {
+	//	t.Errorf("len(m.VStatusListMap) == 0")
+	//}
 
 	//test upload
-	m.Metadata, _ = master.NewMetadataRedis("localhost", 6379, "", 0)
-
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "")
 	tempFile.WriteString("1234567890")
 	tempFile.Close()
@@ -74,3 +78,77 @@ func TestAPI(t *testing.T) {
 	}
 }
 
+func TestReplication(t *testing.T) {
+	m, err := master.NewMaster()
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.Metadata, _ = master.NewMetadataRedis("localhost", 6379, "", 0)
+	m.Port = 7998
+	m.Replication = [3]int{1, 0, 0}
+	go m.Start()
+
+	dir, _ := ioutil.TempDir("", "")
+	defer os.RemoveAll(dir)
+
+	vm1, err := manager.NewVolumeManager(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	vm1.AdminPort = 7802
+	vm1.PublicPort = 7902
+	vm1.MasterPort = m.Port
+	go vm1.Start()
+
+	dir2, _ := ioutil.TempDir("", "")
+	defer os.RemoveAll(dir2)
+
+	vm2, err := manager.NewVolumeManager(dir2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	vm2.AdminPort = 7803
+	vm2.PublicPort = 7903
+	vm2.MasterPort = m.Port
+	go vm2.Start()
+
+	time.Sleep(time.Second / 10)
+
+	if len(m.VMStatusList) != 2 {
+		t.Fatalf("len(m.VMStatusList):%d != 2", len(m.VMStatusList))
+	}
+
+	//test upload
+	tempFile, _ := ioutil.TempFile(os.TempDir(), "")
+	tempFile.WriteString("1234567890")
+	tempFile.Close()
+	err = api.Upload("localhost", m.Port, tempFile.Name(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	//test get
+	resp, err := http.Get(fmt.Sprintf("http://%s:%d%s", "localhost", m.Port, tempFile.Name()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("%d != http.StatusFound", resp.StatusCode)
+	}
+
+	//test delete
+	err = api.Delete("localhost", m.Port, tempFile.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	//test get again
+	_, err = api.Get("localhost", m.Port, tempFile.Name())
+	if err == nil {
+		t.Error("delete fail?")
+	}
+}

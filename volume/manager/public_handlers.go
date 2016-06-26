@@ -29,7 +29,7 @@ func (vm *VolumeManager)publicEntry(w http.ResponseWriter, r *http.Request) {
 			if publicUrlRegex.MatchString(r.URL.Path) {
 				vm.publicReadFile(w, r)
 			}else {
-				http.Error(w, "", http.StatusMethodNotAllowed)
+				http.NotFound(w, r)
 			}
 		}
 	default:
@@ -56,6 +56,11 @@ func (vm *VolumeManager)publicReadFile(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Accept-Ranges", "bytes")
+	w.Header().Set("Content-Length", strconv.FormatUint(file.Info.Size, 10))
+	if r.Method == http.MethodHead {
+		return
+	}
 	reader := bufio.NewReaderSize(file, readBufferSize)
 	for {
 		data, err := reader.Peek(4096)

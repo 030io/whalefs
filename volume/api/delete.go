@@ -17,7 +17,7 @@ func Delete(host string, port int, vid int, fid uint64, filename string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusAccepted {
+	if resp.StatusCode == http.StatusAccepted || resp.StatusCode == http.StatusNotFound {
 		return nil
 	}else {
 		body, _ := ioutil.ReadAll(resp.Body)

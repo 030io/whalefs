@@ -8,6 +8,7 @@ import (
 	"fmt"
 //"encoding/json"
 	"github.com/030io/whalefs/volume"
+	"gopkg.in/redis.v2"
 )
 
 var (
@@ -123,7 +124,9 @@ func (vm *VolumeManager)adminDeleteFile(w http.ResponseWriter, r *http.Request) 
 
 	fid, _ := strconv.ParseUint(match[2], 10, 64)
 	err := volume.Delete(fid, match[3])
-	if err != nil {
+	if err == redis.Nil {
+		http.NotFound(w, r)
+	}else if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}else {
 		http.Error(w, "", http.StatusAccepted)

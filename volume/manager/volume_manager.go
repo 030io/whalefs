@@ -26,6 +26,9 @@ type VolumeManager struct {
 	AdminServer  *http.ServeMux
 	PublicServer *http.ServeMux
 
+	Machine      string
+	DataCenter   string
+
 	MasterHost   string
 	MasterPort   int
 }
@@ -103,6 +106,8 @@ func (vm *VolumeManager)Heartbeat() {
 		vms.AdminPort = vm.AdminPort
 		vms.PublicHost = vm.PublicHost
 		vms.PublicPort = vm.PublicPort
+		vms.Machine = vm.Machine
+		vms.DataCenter = vm.Machine
 		vms.VStatusList = make([]*master.VolumeStatus, 0, len(vm.Volumes))
 
 		for vid, v := range vm.Volumes {
