@@ -75,14 +75,14 @@ func (m *Master)heartbeat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	m.VMStatusList = append(m.VMStatusList, newVms)
-	for vid, vs := range newVms.VStatusList {
+	for _, vs := range newVms.VStatusList {
 		vs.vmStatus = newVms
-		vsList := m.VStatusListMap[vid]
+		vsList := m.VStatusListMap[vs.Id]
 		if vsList == nil {
 			vsList = make([]*VolumeStatus, 0)
 		}
 		vsList = append(vsList, vs)
-		m.VStatusListMap[vid] = vsList
+		m.VStatusListMap[vs.Id] = vsList
 	}
 }
 
@@ -99,11 +99,9 @@ func (m *Master)getFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	randVStatusList := make([]*VolumeStatus, len(vStatusList))
-	copy(randVStatusList, vStatusList)
+	randVStatusList := append(make([]*VolumeStatus, 0, len(vStatusList)), vStatusList...)
 	for _, vStatus := range randVStatusList {
 		if vStatus.vmStatus.IsAlive() {
-			println(vStatus.vmStatus.PublicPort)
 			http.Redirect(w, r, vStatus.getFileUrl(fid, fileName), http.StatusFound)
 			return
 		}
@@ -190,7 +188,8 @@ func (m *Master)deleteFile(w http.ResponseWriter, r *http.Request) {
 
 	for _, vStatus := range vStatusList {
 		go vStatus.delete(fid, fileName)
-		m.Metadata.Delete(r.URL.Path)
-		http.Error(w, "", http.StatusAccepted)
 	}
+
+	m.Metadata.Delete(r.URL.Path)
+	http.Error(w, "", http.StatusAccepted)
 }

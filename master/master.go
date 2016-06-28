@@ -31,7 +31,7 @@ type Master struct {
 
 func NewMaster() (*Master, error) {
 	m := new(Master)
-	m.Port = 7999
+	m.Port = 8888
 	m.VMStatusList = make([]*VolumeManagerStatus, 0, 1)
 	m.VStatusListMap = make(map[int][]*VolumeStatus)
 

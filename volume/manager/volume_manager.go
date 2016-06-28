@@ -46,6 +46,7 @@ func NewVolumeManager(dir string) (*VolumeManager, error) {
 		panic(err)
 	}
 
+	vm.Volumes = make(map[int]*volume.Volume)
 	for _, fi := range fileInfos {
 		fileName := fi.Name()
 		if strings.HasSuffix(fileName, ".data") {
@@ -58,8 +59,6 @@ func NewVolumeManager(dir string) (*VolumeManager, error) {
 		}
 	}
 
-	vm.Volumes = make(map[int]*volume.Volume)
-
 	vm.AdminPort = 7800
 	vm.AdminHost = "localhost"
 	vm.PublicPort = 7900
@@ -71,7 +70,7 @@ func NewVolumeManager(dir string) (*VolumeManager, error) {
 	vm.AdminServer.HandleFunc("/", vm.adminEntry)
 
 	vm.MasterHost = "localhost"
-	vm.MasterPort = 7999
+	vm.MasterPort = 8888
 	return vm, nil
 }
 

@@ -29,6 +29,11 @@ func NewMetadataRedis(host string, port int, password string, database int) (*Me
 		Password: password,
 		DB: int64(database),
 	})
+
+	if _, err := mr.client.Get("__key").Result(); err != nil && err != redis.Nil {
+		return nil, err
+	}
+
 	return mr, nil
 }
 
