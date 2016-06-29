@@ -30,6 +30,10 @@ var (
 	vmAdminPort = volumeManager.Flag("adminPort", "for manage files (default: 7800-7899)").Int()
 	vmPublicHost = volumeManager.Flag("publicHost", "for access files (default: auto detect by master)").String()
 	vmPublicPort = volumeManager.Flag("publicPort", "for access files (default: 7900-7999)").Int()
+	vmMasterHost = volumeManager.Flag("masterHost", "host of master server").Default("localhost").String()
+	vmMasterPort = volumeManager.Flag("masterPort", "port of master server").Default("8888").Int()
+	vmMachine = volumeManager.Flag("machine", "machine tag of volume manager server (defalut: auto detect by master)").String()
+	vmDataCenter = volumeManager.Flag("dataCenter", "datacenter tag of volume manager server (defalut: \"\")").String()
 )
 
 func main() {
@@ -72,6 +76,11 @@ func main() {
 			}
 		}
 		vm.PublicPort = *vmPublicPort
+
+		vm.MasterHost = *vmMasterHost
+		vm.MasterPort = *vmMasterPort
+		vm.Machine = *vmMachine
+		vm.DataCenter = *vmDataCenter
 
 		vm.Start()
 	}

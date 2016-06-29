@@ -63,7 +63,7 @@ func (f *File)Read(b []byte) (n int, err error) {
 
 	n, err = f.DataFile.ReadAt(b, int64(start))
 	f.offset += uint64(n)
-	if f.offset == f.Info.Size {
+	if f.offset >= f.Info.Size {
 		err = io.EOF
 	}
 	return
@@ -78,6 +78,7 @@ func (f *File)Write(b []byte) (n int, err error) {
 		return 0, errors.New("you should create a new File to write")
 	}else {
 		n, err = f.DataFile.WriteAt(b, int64(start))
+		f.offset += uint64(n)
 		return
 	}
 }

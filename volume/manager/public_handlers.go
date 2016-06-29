@@ -4,10 +4,9 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
-	"gopkg.in/bufio.v1"
 )
 
-const readBufferSize = 512 * 1024
+const readBufferSize = 64 * 1024
 
 var publicUrlRegex *regexp.Regexp
 
@@ -61,10 +60,10 @@ func (vm *VolumeManager)publicReadFile(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodHead {
 		return
 	}
-	reader := bufio.NewReaderSize(file, readBufferSize)
+	data := make([]byte, readBufferSize)
 	for {
-		data, err := reader.Peek(4096)
-		w.Write(data)
+		n, err := file.Read(data)
+		w.Write(data[:n])
 		if err != nil {
 			break
 		}

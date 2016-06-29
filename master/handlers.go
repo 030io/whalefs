@@ -7,6 +7,7 @@ import (
 	"time"
 	"strings"
 	"sync"
+	"math/rand"
 )
 
 func (m *Master)masterEntry(w http.ResponseWriter, r *http.Request) {
@@ -99,8 +100,10 @@ func (m *Master)getFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	randVStatusList := append(make([]*VolumeStatus, 0, len(vStatusList)), vStatusList...)
-	for _, vStatus := range randVStatusList {
+	length := len(vStatusList)
+	j := rand.Intn(length)
+	for i := 0; i < length; i++ {
+		vStatus := vStatusList[(i + j) % length]
 		if vStatus.vmStatus.IsAlive() {
 			http.Redirect(w, r, vStatus.getFileUrl(fid, fileName), http.StatusFound)
 			return
