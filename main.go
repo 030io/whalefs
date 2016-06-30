@@ -69,8 +69,8 @@ func main() {
 		}
 
 		go func() {
-			m.Stop()
 			sig := <-signals
+			m.Stop()
 			switch sig {
 			case syscall.SIGINT:
 				os.Exit(int(syscall.SIGINT))
@@ -110,8 +110,8 @@ func main() {
 		vm.DataCenter = *vmDataCenter
 
 		go func() {
-			vm.Stop()
 			sig := <-signals
+			vm.Stop()
 			switch sig {
 			case syscall.SIGINT:
 				os.Exit(int(syscall.SIGINT))

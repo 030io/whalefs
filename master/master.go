@@ -62,6 +62,8 @@ func (m *Master)getWritableVolumes() ([]*VolumeStatus, error) {
 	m.volumeMutex.Lock()
 	defer m.volumeMutex.Unlock()
 
+	//TODO: 优化负载均衡
+
 	for _, vStatusList := range m.VStatusListMap {
 		if m.vStatusListIsValid(vStatusList) {
 			return vStatusList, nil
