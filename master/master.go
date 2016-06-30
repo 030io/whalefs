@@ -18,6 +18,7 @@ type Master struct {
 
 	VMStatusList   []*VolumeManagerStatus
 	VStatusListMap map[int][]*VolumeStatus
+	volumeMutex    sync.RWMutex
 
 	Server         *http.ServeMux
 	serverMutex    sync.RWMutex
@@ -58,6 +59,9 @@ func (m *Master)Stop() {
 }
 
 func (m *Master)getWritableVolumes() ([]*VolumeStatus, error) {
+	m.volumeMutex.Lock()
+	defer m.volumeMutex.Unlock()
+
 	for _, vStatusList := range m.VStatusListMap {
 		if m.vStatusListIsValid(vStatusList) {
 			return vStatusList, nil

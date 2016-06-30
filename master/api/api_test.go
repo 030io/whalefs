@@ -52,7 +52,7 @@ func TestAPI(t *testing.T) {
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "")
 	tempFile.WriteString("1234567890")
 	tempFile.Close()
-	err = api.Upload("localhost", m.Port, tempFile.Name(), "")
+	err = api.Upload("localhost", m.Port, tempFile.Name(), tempFile.Name())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,7 @@ func TestReplication(t *testing.T) {
 	tempFile, _ := ioutil.TempFile(os.TempDir(), "")
 	tempFile.WriteString("1234567890")
 	tempFile.Close()
-	err = api.Upload("localhost", m.Port, tempFile.Name(), "")
+	err = api.Upload("localhost", m.Port, tempFile.Name(), tempFile.Name())
 	if err != nil {
 		t.Fatal(err)
 	}

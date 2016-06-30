@@ -12,26 +12,31 @@ import (
 	"io/ioutil"
 )
 
-func Upload(host string, port int, filePath string, fileName string) (err error) {
-	if fileName == "" {
-		fileName = filepath.Base(filePath)
+func Upload(host string, port int, dst string, src string) (err error) {
+	fi, err := os.Stat(src)
+	if os.IsNotExist(err) {
+		return err
+	}
+	if fi.IsDir() {
+		return fmt.Errorf("can't upload a directry: %s", src)
+	}
+
+	if dst[len(dst) - 1] == '/' {
+		dst += filepath.Base(src)
 	}
 
 	var url string
-	if filePath[0] == '/'{
-		url = fmt.Sprintf("http://%s:%d%s", host, port, filePath)
+	if dst[0] == '/' {
+		url = fmt.Sprintf("http://%s:%d%s", host, port, dst)
 	}else {
-		url = fmt.Sprintf("http://%s:%d/%s", host, port, filePath)
+		url = fmt.Sprintf("http://%s:%d/%s", host, port, dst)
 	}
-	file, err := os.Open(filePath)
-	if os.IsNotExist(err) {
-		return
-	}
+	file, _ := os.Open(src)
 
 	body := new(bytes.Buffer)
 	mPart := multipart.NewWriter(body)
 
-	filePart, err := mPart.CreateFormFile("file", fileName)
+	filePart, err := mPart.CreateFormFile("file", filepath.Base(dst))
 	if err != nil {
 		return
 	}

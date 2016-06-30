@@ -56,6 +56,9 @@ func NewVolumeManager(dir string) (*VolumeManager, error) {
 			}
 
 			vm.Volumes[vid], err = volume.NewVolume(dir, vid)
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 

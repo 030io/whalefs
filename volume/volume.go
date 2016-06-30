@@ -43,6 +43,9 @@ func NewVolume(dir string, vid int) (v *Volume, err error) {
 		return nil, err
 	}
 
+	fi, _ := v.dataFile.Stat()
+	v.DataFileSize = uint64(fi.Size())
+
 	return v, nil
 }
 

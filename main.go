@@ -7,6 +7,7 @@ import (
 	"github.com/030io/whalefs/volume/manager"
 	"fmt"
 	"net"
+	"net/http"
 )
 
 const version = "1.1 beta"
@@ -34,9 +35,18 @@ var (
 	vmMasterPort = volumeManager.Flag("masterPort", "port of master server").Default("8888").Int()
 	vmMachine = volumeManager.Flag("machine", "machine tag of volume manager server (defalut: auto detect by master)").String()
 	vmDataCenter = volumeManager.Flag("dataCenter", "datacenter tag of volume manager server (defalut: \"\")").String()
+
+	benchmark = app.Command("benchmark", "benchmark")
+	bmMasterHost = benchmark.Flag("masterHost", "host of master server").Default("localhost").String()
+	bmMasterPort = benchmark.Flag("masterPort", "post of master server").Default("8888").Int()
+	bmConcurrent = benchmark.Flag("concurrent", "concurrent").Default("16").Int()
+	bmNum = benchmark.Flag("num", "number of file write/read").Default("1000").Int()
+	bmSize = benchmark.Flag("size", "size of file write/read").Default("1024").Int()
 )
 
 func main() {
+	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = 1024
+
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))
 	switch command {
 	case master.FullCommand():
@@ -83,6 +93,8 @@ func main() {
 		vm.DataCenter = *vmDataCenter
 
 		vm.Start()
+	case benchmark.FullCommand():
+		benchmark_()
 	}
 }
 

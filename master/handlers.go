@@ -94,7 +94,9 @@ func (m *Master)getFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	m.volumeMutex.RLock()
 	vStatusList, ok := m.VStatusListMap[vid]
+	m.volumeMutex.RUnlock()
 	if !ok {
 		http.Error(w, "can't find volume", http.StatusNotFound)
 		return
