@@ -53,11 +53,10 @@ func (vm *VolumeManager)publicReadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Accept-Ranges", "bytes")
-	w.Header().Set("Content-Length", strconv.FormatUint(file.Info.Size, 10))
 	if r.Method == http.MethodHead {
+		w.Header().Set("Content-Length", strconv.FormatUint(file.Info.Size, 10))
 		return
 	}
 	data := make([]byte, readBufferSize)
