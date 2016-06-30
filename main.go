@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os/signal"
+	"syscall"
 )
 
 const version = "1.1 beta"
@@ -47,6 +49,9 @@ var (
 func main() {
 	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = 1024
 
+	signals := make(chan os.Signal)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))
 	switch command {
 	case master.FullCommand():
@@ -62,6 +67,18 @@ func main() {
 		for i, c := range *masterReplication {
 			m.Replication[i] = int(c) - int('0')
 		}
+
+		go func() {
+			m.Stop()
+			sig := <-signals
+			switch sig {
+			case syscall.SIGINT:
+				os.Exit(int(syscall.SIGINT))
+			case syscall.SIGTERM:
+				os.Exit(int(syscall.SIGTERM))
+			}
+		}()
+
 		m.Start()
 	case volumeManager.FullCommand():
 		vm, err := manager.NewVolumeManager(*vmDir)
@@ -92,8 +109,29 @@ func main() {
 		vm.Machine = *vmMachine
 		vm.DataCenter = *vmDataCenter
 
+		go func() {
+			vm.Stop()
+			sig := <-signals
+			switch sig {
+			case syscall.SIGINT:
+				os.Exit(int(syscall.SIGINT))
+			case syscall.SIGTERM:
+				os.Exit(int(syscall.SIGTERM))
+			}
+		}()
+
 		vm.Start()
 	case benchmark.FullCommand():
+		go func() {
+			sig := <-signals
+			switch sig {
+			case syscall.SIGINT:
+				os.Exit(int(syscall.SIGINT))
+			case syscall.SIGTERM:
+				os.Exit(int(syscall.SIGTERM))
+			}
+		}()
+
 		benchmark_()
 	}
 }
