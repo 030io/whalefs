@@ -28,6 +28,7 @@ func benchmark_() {
 	}
 	loop := make(chan int)
 	wg := sync.WaitGroup{}
+	mutex := sync.Mutex{}
 	testFile, _ := ioutil.TempFile(os.TempDir(), "")
 	testFile.Truncate(int64(*bmSize))
 	testFile.Close()
@@ -38,12 +39,13 @@ func benchmark_() {
 		go func() {
 			for b := range loop {
 				err := api.Upload(*bmMasterHost, *bmMasterPort, testFile.Name() + strconv.Itoa(b), testFile.Name())
+				mutex.Lock()
 				if err == nil {
 					uploadResult.completed += 1
 				}else {
 					uploadResult.failed += 1
-					fmt.Println(err.Error())
 				}
+				mutex.Unlock()
 			}
 			wg.Done()
 		}()
@@ -79,11 +81,13 @@ func benchmark_() {
 		go func() {
 			for b := range loop {
 				data, err := api.Get(*bmMasterHost, *bmMasterPort, testFile.Name() + strconv.Itoa(b))
+				mutex.Lock()
 				if err == nil &&len(data) == *bmSize {
 					readResult.completed += 1
 				}else {
 					readResult.failed += 1
 				}
+				mutex.Unlock()
 			}
 			wg.Done()
 		}()

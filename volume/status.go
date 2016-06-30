@@ -122,6 +122,9 @@ func (s *Status)freeSpace(offset uint64, size uint64) error {
 		nSize := binary.BigEndian.Uint64(key[9:])
 		if nOffset < offset + size {
 			panic(errors.New("that is impossible"))
+			//if nOffset == offset {
+			//	transaction.Discard()
+			//return errors.New("space already free")
 		}else if nOffset == offset + size {
 			transaction.Delete(key, nil)
 			size += nSize
@@ -138,6 +141,8 @@ func (s *Status)freeSpace(offset uint64, size uint64) error {
 		pSize := binary.BigEndian.Uint64(key[9:])
 		if pOffset + pSize > offset {
 			panic(errors.New("that is impossible"))
+			//transaction.Discard()
+			//return errors.New("space alread free")
 		}else if pOffset + pSize == offset {
 			transaction.Delete(key, nil)
 			offset = pOffset

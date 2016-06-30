@@ -21,7 +21,7 @@ type Volume struct {
 	index        Index
 	status       *Status
 	dataFile     *os.File
-	rwMutex      sync.RWMutex
+	mutex        sync.Mutex
 }
 
 func NewVolume(dir string, vid int) (v *Volume, err error) {
@@ -50,8 +50,8 @@ func NewVolume(dir string, vid int) (v *Volume, err error) {
 }
 
 func (v *Volume)Get(fid uint64) (*File, error) {
-	v.rwMutex.RLock()
-	defer v.rwMutex.RUnlock()
+	//v.rwMutex.RLock()
+	//defer v.rwMutex.RUnlock()
 
 	fi, err := v.index.Get(fid)
 	if err == nil {
@@ -62,15 +62,15 @@ func (v *Volume)Get(fid uint64) (*File, error) {
 }
 
 func (v *Volume)Delete(fid uint64, fileName string) error {
+	v.mutex.Lock()
+	defer v.mutex.Unlock()
+
 	file, err := v.Get(fid)
 	if err != nil {
 		return err
 	}else if file.Info.FileName != fileName {
 		return fmt.Errorf("%s != %s", file.Info.FileName, fileName)
 	}
-
-	v.rwMutex.Lock()
-	defer v.rwMutex.Unlock()
 
 	//因为文件内容前后都写入fid(8 byte) 要一起释放
 	err = v.status.freeSpace(file.Info.Offset - 8, file.Info.Size + 16)
@@ -83,8 +83,8 @@ func (v *Volume)Delete(fid uint64, fileName string) error {
 }
 
 func (v *Volume)NewFile(fid uint64, fileName string, size uint64) (f *File, err error) {
-	v.rwMutex.Lock()
-	defer v.rwMutex.Unlock()
+	v.mutex.Lock()
+	defer v.mutex.Unlock()
 
 	//var fid uint64
 	//for {
@@ -170,7 +170,8 @@ func (v *Volume)newSpace(size uint64) (uint64, error) {
 }
 
 func (v *Volume)Close() {
-	v.rwMutex.Lock()
+	v.mutex.Lock()
+	//v.status.spaceMutex.Lock()
 	//因为要退出,所以不解锁,禁止读写
 	//defer v.rwMutex.Unlock()
 
