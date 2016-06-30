@@ -74,3 +74,7 @@ func (m *MetadataRedis)setConfig(key string, value string) error {
 func (m *MetadataRedis)getConfig(key string) (string, error) {
 	return m.client.Get(key).Result()
 }
+
+func (m *MetadataRedis)Close() error {
+	return m.client.Close()
+}

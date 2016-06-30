@@ -56,6 +56,7 @@ func (m *Master)Start() {
 
 func (m *Master)Stop() {
 	m.serverMutex.Lock()
+	m.Metadata.Close()
 }
 
 func (m *Master)getWritableVolumes() ([]*VolumeStatus, error) {

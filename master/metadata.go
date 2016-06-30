@@ -1,5 +1,7 @@
 package master
 
+import "io"
+
 type Metadata interface {
 	Get(filePath string) (vid int, fid uint64, fileName string, err error)
 	Set(filePath string, vid int, fid uint64, fileName string) error
@@ -7,4 +9,5 @@ type Metadata interface {
 	Has(filePath string) bool
 	setConfig(key string, value string) error
 	getConfig(key string) (value string, err error)
+	io.Closer
 }

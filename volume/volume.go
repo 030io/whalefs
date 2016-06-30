@@ -178,6 +178,10 @@ func (v *Volume)Close() {
 	//将所有资源释放
 	v.dataFile.Close()
 	v.dataFile = nil
+
+	v.status.db.Close()
 	v.status = nil
+
+	v.index.Close()
 	v.index = nil
 }

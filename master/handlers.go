@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"math/rand"
+	"path/filepath"
 )
 
 func (m *Master)masterEntry(w http.ResponseWriter, r *http.Request) {
@@ -128,7 +129,22 @@ func (m *Master)uploadFile(w http.ResponseWriter, r *http.Request) {
 	//	}
 	//	m.Metadata.Delete(r.URL.Path)
 	//}
-	if m.Metadata.Has(r.URL.Path) {
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var dst string
+	if r.URL.Path[len(r.URL.Path) - 1] == '/' {
+		dst = r.URL.Path + filepath.Base(header.Filename)
+	}else {
+		dst = r.URL.Path
+	}
+	fileName := filepath.Base(dst)
+
+	if m.Metadata.Has(dst) {
 		http.Error(w, "file is existed, you should delete it at first.", http.StatusNotAcceptable)
 		return
 	}
@@ -139,20 +155,14 @@ func (m *Master)uploadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	file, header, err := r.FormFile("file")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	data, _ := ioutil.ReadAll(file)
 	fid := m.generateFid()
-	wg := sync.WaitGroup{}
 
+	wg := sync.WaitGroup{}
 	for _, vStatus := range vStatusList {
 		wg.Add(1)
 		go func(vs *VolumeStatus) {
-			e := vs.uploadFile(fid, header.Filename, data)
+			e := vs.uploadFile(fid, fileName, data)
 			if e != nil {
 				err = e
 			}
@@ -160,15 +170,16 @@ func (m *Master)uploadFile(w http.ResponseWriter, r *http.Request) {
 		}(vStatus)
 	}
 	wg.Wait()
+
 	if err != nil {
 		for _, vStatus := range vStatusList {
-			go vStatus.delete(fid, header.Filename)
+			go vStatus.delete(fid, fileName)
 		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	m.Metadata.Set(r.URL.Path, vStatusList[0].Id, fid, header.Filename)
+	m.Metadata.Set(dst, vStatusList[0].Id, fid, fileName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

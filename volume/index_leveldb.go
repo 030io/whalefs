@@ -48,3 +48,7 @@ func (l *LevelDBIndex)Delete(fid uint64) error {
 	binary.BigEndian.PutUint64(key, fid)
 	return l.db.Delete(key, nil)
 }
+
+func (l *LevelDBIndex)Close() error {
+	return l.db.Close()
+}
