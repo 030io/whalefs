@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"crypto/sha1"
 	"os"
+	"crypto/rand"
 )
 
 func TestVolumeAndFile(t *testing.T) {
@@ -16,13 +17,14 @@ func TestVolumeAndFile(t *testing.T) {
 		t.Error(err)
 	}
 
-	for i := 1; i < 100; i++ {
-		size := uint64(1024)
+	for i, size := range []uint64{1, 100, 1024, 1024 * 1024, 1024 * 1024 * 10} {
 		file, err := v.NewFile(uint64(i), "test_file.1", size)
 		if err != nil {
 			t.Error(err)
 		}
+
 		data := make([]byte, size)
+		rand.Read(data)
 		_, err = file.Write(data)
 		if err != nil {
 			t.Error(err)

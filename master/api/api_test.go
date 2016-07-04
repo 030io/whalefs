@@ -6,9 +6,11 @@ import (
 	"io/ioutil"
 	"os"
 	"github.com/030io/whalefs/volume/manager"
-//"github.com/030io/whalefs/volume"
 	"time"
 	"github.com/030io/whalefs/master/api"
+//volumeApi "github.com/030io/whalefs/volume/api"
+	"crypto/rand"
+	"crypto/sha1"
 	"net/http"
 	"fmt"
 )
@@ -18,7 +20,7 @@ func TestAPI(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m.Metadata, _ = master.NewMetadataRedis("localhost", 6379, "", 0)
+	m.Metadata, _ = master.NewMetadataRedis("localhost", 6379, "", 10)
 
 	go m.Start()
 
@@ -49,32 +51,42 @@ func TestAPI(t *testing.T) {
 	//}
 
 	//test upload
-	tempFile, _ := ioutil.TempFile(os.TempDir(), "")
-	tempFile.WriteString("1234567890")
-	tempFile.Close()
-	err = api.Upload("localhost", m.Port, tempFile.Name(), tempFile.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
+	//for i := 1; i < 101; i ++ {
+	//size := i / 10 * 1024
+	for _, size := range []int{1, 1024, 1024 * 1024, 1024 * 1024 * 2} {
+		for i := 0; i < 1; i++ {
 
-	//test get
-	body, err := api.Get("localhost", m.Port, tempFile.Name())
-	if err != nil {
-		t.Fatal(err)
-	}else if string(body) != "1234567890" {
-		t.Error("data wrong")
-	}
+			data := make([]byte, size)
+			rand.Read(data)
 
-	//test delete
-	err = api.Delete("localhost", m.Port, tempFile.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
+			tempFile, _ := ioutil.TempFile(os.TempDir(), "")
+			tempFile.Write(data)
+			tempFile.Close()
+			err = api.Upload("localhost", m.Port, tempFile.Name(), tempFile.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
 
-	//test get again
-	_, err = api.Get("localhost", m.Port, tempFile.Name())
-	if err == nil {
-		t.Error("delete fail?")
+			//test get
+			body, err := api.Get("localhost", m.Port, tempFile.Name())
+			if err != nil {
+				t.Fatal(err)
+			}else if sha1.Sum(body) != sha1.Sum(data) {
+				t.Error("data wrong")
+			}
+
+			//test delete
+			err = api.Delete("localhost", m.Port, tempFile.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			//test get again
+			_, err = api.Get("localhost", m.Port, tempFile.Name())
+			if err == nil {
+				t.Error("delete fail?")
+			}
+		}
 	}
 }
 
@@ -83,7 +95,7 @@ func TestReplication(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m.Metadata, _ = master.NewMetadataRedis("localhost", 6379, "", 0)
+	m.Metadata, _ = master.NewMetadataRedis("localhost", 6379, "", 11)
 	m.Port = 7998
 	m.Replication = [3]int{1, 0, 0}
 	go m.Start()
@@ -120,35 +132,43 @@ func TestReplication(t *testing.T) {
 		t.Fatalf("len(m.VMStatusList):%d != 2", len(m.VMStatusList))
 	}
 
-	//test upload
-	tempFile, _ := ioutil.TempFile(os.TempDir(), "")
-	tempFile.WriteString("1234567890")
-	tempFile.Close()
-	err = api.Upload("localhost", m.Port, tempFile.Name(), tempFile.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
+	for _, size := range []int{1, 1024, 1024 * 1024, 1024 * 1024 * 2} {
+		for i := 0; i < 1; i++ {
 
-	//test get
-	resp, err := http.Get(fmt.Sprintf("http://%s:%d%s", "localhost", m.Port, tempFile.Name()))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
+			data := make([]byte, size)
+			rand.Read(data)
 
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("%d != http.StatusFound", resp.StatusCode)
-	}
+			//test upload
+			tempFile, _ := ioutil.TempFile(os.TempDir(), "")
+			tempFile.Write(data)
+			tempFile.Close()
+			err = api.Upload("localhost", m.Port, tempFile.Name(), tempFile.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
 
-	//test delete
-	err = api.Delete("localhost", m.Port, tempFile.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
+			//test get
+			resp, err := http.Get(fmt.Sprintf("http://%s:%d%s", "localhost", m.Port, tempFile.Name()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer resp.Body.Close()
 
-	//test get again
-	_, err = api.Get("localhost", m.Port, tempFile.Name())
-	if err == nil {
-		t.Error("delete fail?")
+			if resp.StatusCode != http.StatusOK {
+				t.Errorf("%d != http.StatusFound", resp.StatusCode)
+			}
+
+			//test delete
+			err = api.Delete("localhost", m.Port, tempFile.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			//test get again
+			_, err = api.Get("localhost", m.Port, tempFile.Name())
+			if err == nil {
+				t.Error("delete fail?")
+			}
+		}
 	}
 }

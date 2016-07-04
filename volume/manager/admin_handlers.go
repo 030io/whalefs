@@ -53,7 +53,7 @@ func (vm *VolumeManager)adminEntry(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, r.URL.String() + " can't match", http.StatusNotFound)
 		}
 	default:
-		http.Error(w, "", http.StatusMethodNotAllowed)
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
@@ -67,7 +67,7 @@ func (vm *VolumeManager)adminPostVolume(w http.ResponseWriter, r *http.Request) 
 	}
 
 	vm.Volumes[vid] = volume
-	http.Error(w, "", http.StatusCreated)
+	w.WriteHeader(http.StatusCreated)
 }
 
 func (vm *VolumeManager)adminPostFile(w http.ResponseWriter, r *http.Request) {
@@ -131,6 +131,6 @@ func (vm *VolumeManager)adminDeleteFile(w http.ResponseWriter, r *http.Request) 
 	}else if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}else {
-		http.Error(w, "", http.StatusAccepted)
+		w.WriteHeader(http.StatusAccepted)
 	}
 }

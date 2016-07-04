@@ -10,7 +10,12 @@ func Get(host string, port int, filePath string) ([]byte, error) {
 	if filePath[0] == '/' {
 		filePath = filePath[1:]
 	}
-	url := fmt.Sprintf("http://%s:%d/%s", host, port, filePath)
+	var url string
+	if filePath[0] == '/' {
+		url = fmt.Sprintf("http://%s:%d%s", host, port, filePath)
+	}else {
+		url = fmt.Sprintf("http://%s:%d/%s", host, port, filePath)
+	}
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err

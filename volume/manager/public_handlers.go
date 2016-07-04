@@ -4,9 +4,10 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"io"
+	"strings"
+	"fmt"
 )
-
-const readBufferSize = 64 * 1024
 
 var publicUrlRegex *regexp.Regexp
 
@@ -32,7 +33,7 @@ func (vm *VolumeManager)publicEntry(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	default:
-		http.Error(w, "", http.StatusMethodNotAllowed)
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
@@ -59,12 +60,42 @@ func (vm *VolumeManager)publicReadFile(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Length", strconv.FormatUint(file.Info.Size, 10))
 		return
 	}
-	data := make([]byte, readBufferSize)
-	for {
-		n, err := file.Read(data)
-		w.Write(data[:n])
+
+	if r.Header.Get("Range") != "" {
+		ranges := strings.Split(r.Header.Get("Range")[6:], "-")
+		start, err := strconv.ParseUint(ranges[0], 10, 64)
 		if err != nil {
-			break
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
+
+		var length uint64
+		if start > file.Info.Size {
+			length = 0
+		}else if ranges[1] != "" {
+			end, err := strconv.ParseUint(ranges[1], 10, 64)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			if end > file.Info.Size {
+				end = file.Info.Size
+			}
+
+			length = end - start
+		}else {
+			length = file.Info.Size - start
+		}
+
+		w.Header().Set("Content-Length", strconv.FormatUint(length, 10))
+		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, start + length, file.Info.Size))
+
+		if length != 0 {
+			file.Seek(int64(start), 0)
+			io.CopyN(w, file, int64(length))
+		}
+	}else {
+		io.Copy(w, file)
 	}
 }

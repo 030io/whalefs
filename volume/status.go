@@ -8,6 +8,7 @@ import (
 	"errors"
 	"path/filepath"
 	"strconv"
+	"fmt"
 )
 
 //var fidKey []byte //key="\x00" value=uint64(big endian 8byte)
@@ -121,7 +122,7 @@ func (s *Status)freeSpace(offset uint64, size uint64) error {
 		nOffset := binary.BigEndian.Uint64(key[1:9])
 		nSize := binary.BigEndian.Uint64(key[9:])
 		if nOffset < offset + size {
-			panic(errors.New("that is impossible"))
+			panic(fmt.Errorf("nOffset: %d < offset: %d + size: %d", nOffset, offset, size))
 			//if nOffset == offset {
 			//	transaction.Discard()
 			//return errors.New("space already free")
@@ -140,7 +141,7 @@ func (s *Status)freeSpace(offset uint64, size uint64) error {
 		pOffset := binary.BigEndian.Uint64(key[1:9])
 		pSize := binary.BigEndian.Uint64(key[9:])
 		if pOffset + pSize > offset {
-			panic(errors.New("that is impossible"))
+			panic(fmt.Errorf("pOffset: %d + pSize: %d > offset: %d", pOffset, pSize, offset))
 			//transaction.Discard()
 			//return errors.New("space alread free")
 		}else if pOffset + pSize == offset {
@@ -163,13 +164,17 @@ func (s *Status)freeSpace(offset uint64, size uint64) error {
 }
 
 func getOffsetSizeKey(offset, size uint64) []byte {
-	binary.BigEndian.PutUint64(offsetSize[1:9], offset)
-	binary.BigEndian.PutUint64(offsetSize[9:], size)
-	return offsetSize
+	key := make([]byte, 1 + 16)
+	key[0] = offsetSize[0]
+	binary.BigEndian.PutUint64(key[1:9], offset)
+	binary.BigEndian.PutUint64(key[9:], size)
+	return key
 }
 
 func getReversedsizeOffset(offset, size uint64) []byte {
-	binary.BigEndian.PutUint64(reversedsizeOffset[9:], offset)
-	binary.BigEndian.PutUint64(reversedsizeOffset[1:9], size ^ (^uint64(0)))
-	return reversedsizeOffset
+	key := make([]byte, 1 + 16)
+	key[0] = reversedsizeOffset[0]
+	binary.BigEndian.PutUint64(key[9:], offset)
+	binary.BigEndian.PutUint64(key[1:9], size ^ (^uint64(0)))
+	return key
 }

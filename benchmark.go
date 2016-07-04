@@ -110,4 +110,46 @@ func benchmark_() {
 	fmt.Printf("transferred:            %d byte\n", readResult.completed * *bmSize)
 	fmt.Printf("request per second:     %.2f\n", float64(readResult.num) / timeTaken)
 	fmt.Printf("transferred per second: %.2f b/s\n", float64(readResult.completed) * float64(*bmSize) / timeTaken)
+
+	deleteResult := &result{
+		concurrent: *bmConcurrent,
+		num: *bmNum,
+		startTime: time.Now(),
+	}
+	loop = make(chan int)
+
+	for i := 0; i < *bmConcurrent; i++ {
+		wg.Add(1)
+		go func() {
+			for b := range loop {
+				err := api.Delete(*bmMasterHost, *bmMasterPort, testFile.Name() + strconv.Itoa(b))
+				mutex.Lock()
+				if err == nil {
+					deleteResult.completed += 1
+				}else {
+					deleteResult.failed += 1
+				}
+				mutex.Unlock()
+			}
+			wg.Done()
+		}()
+	}
+
+	for i := 0; i < *bmNum; i++ {
+		loop <- i
+	}
+	close(loop)
+	wg.Wait()
+
+	deleteResult.endTime = time.Now()
+	timeTaken = float64(deleteResult.endTime.UnixNano() - deleteResult.startTime.UnixNano()) / float64(time.Second)
+
+	fmt.Printf("\n\nread %d %dbyte file:\n\n", deleteResult.num, *bmSize)
+	fmt.Printf("concurrent:             %d\n", deleteResult.concurrent)
+	fmt.Printf("time taken:             %.2f seconds\n", timeTaken)
+	fmt.Printf("completed:              %d\n", deleteResult.completed)
+	fmt.Printf("failed:                 %d\n", deleteResult.failed)
+	fmt.Printf("transferred:            %d byte\n", deleteResult.completed * *bmSize)
+	fmt.Printf("request per second:     %.2f\n", float64(deleteResult.num) / timeTaken)
+	fmt.Printf("transferred per second: %.2f b/s\n", float64(deleteResult.completed) * float64(*bmSize) / timeTaken)
 }

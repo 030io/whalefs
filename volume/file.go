@@ -88,13 +88,15 @@ func (f *File)Seek(offset int64, whence int) (int64, error) {
 	case 0:
 		f.offset = uint64(offset)
 	case 1:
-		f.offset += uint64(offset)
+		f.offset = uint64(int64(f.offset) + offset)
 	case 2:
-		f.offset = f.Info.Size - uint64(offset)
+		f.offset = uint64(int64(f.Info.Size) + offset)
 	}
-	if f.offset > f.Info.Size {
-		return int64(f.offset), errors.New("offset > file.size")
-	}else {
-		return int64(f.offset), nil
-	}
+	return int64(f.offset), nil
+	//if f.offset > f.Info.Size {
+	//	f.offset = 0
+	//	return int64(f.offset), errors.New("offset > file.size")
+	//}else {
+	//	return int64(f.offset), nil
+	//}
 }

@@ -18,7 +18,7 @@ type Master struct {
 
 	VMStatusList   []*VolumeManagerStatus
 	VStatusListMap map[int][]*VolumeStatus
-	volumeMutex    sync.RWMutex
+	statusMutex    sync.RWMutex
 
 	Server         *http.ServeMux
 	serverMutex    sync.RWMutex
@@ -60,22 +60,10 @@ func (m *Master)Stop() {
 }
 
 func (m *Master)getWritableVolumes() ([]*VolumeStatus, error) {
-	m.volumeMutex.Lock()
-	defer m.volumeMutex.Unlock()
+	m.statusMutex.RLock()
+	defer m.statusMutex.RUnlock()
 
-	//TODO: 优化负载均衡
-
-	for _, vStatusList := range m.VStatusListMap {
-		if m.vStatusListIsValid(vStatusList) {
-			return vStatusList, nil
-		}
-	}
-
-	err := m.createVolumeWithReplication()
-	if err != nil {
-		return nil, err
-	}
-
+	//map 迭代是随机的,所以不需要手动负载均衡
 	for _, vStatusList := range m.VStatusListMap {
 		if m.vStatusListIsValid(vStatusList) {
 			return vStatusList, nil
@@ -100,14 +88,17 @@ func (m *Master)vStatusListIsValid(vStatusList []*VolumeStatus) bool {
 	return true
 }
 
-func (m *Master)createVolumeWithReplication() error {
-	temp := make([]*VolumeManagerStatus, 0)
-	for _, vms := range m.VMStatusList {
-		if vms.IsAlive() && vms.canCreateVolume() {
-			temp = append(temp, vms)
-			break
-		}
+func (m *Master)createVolumeWithReplication(vms *VolumeManagerStatus) error {
+	m.statusMutex.RLock()
+	defer m.statusMutex.RUnlock()
+
+	if !vms.IsAlive() {
+		return fmt.Errorf("%s:%d is dead", vms.AdminHost, vms.AdminPort)
+	}else if !vms.canCreateVolume() {
+		return fmt.Errorf("%s:%d can't create volume", vms.AdminHost, vms.AdminPort)
 	}
+
+	temp := []*VolumeManagerStatus{vms}
 
 	find0:
 	for _, vms := range m.VMStatusList {
@@ -169,9 +160,18 @@ func (m *Master)createVolumeWithReplication() error {
 		if err != nil {
 			return err
 		}
-
-		m.VStatusListMap[vid] = append(m.VStatusListMap[vid], vms.VStatusList[len(vms.VStatusList) - 1])
 	}
+
+	vStatusList := make([]*VolumeStatus, len(temp))
+	for i, vms := range temp {
+		vStatusList[i] = vms.VStatusList[len(vms.VStatusList) - 1]
+	}
+	m.statusMutex.RUnlock()
+	m.statusMutex.Lock()
+	m.VStatusListMap[vid] = vStatusList
+	m.statusMutex.Unlock()
+	m.statusMutex.RLock()
+
 	return nil
 }
 

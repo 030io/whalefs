@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 	"encoding/binary"
-	"fmt"
 	"errors"
 )
 
@@ -69,7 +68,7 @@ func (v *Volume)Delete(fid uint64, fileName string) error {
 	if err != nil {
 		return err
 	}else if file.Info.FileName != fileName {
-		return fmt.Errorf("%s != %s", file.Info.FileName, fileName)
+		return errors.New("filename is wrong")
 	}
 
 	//因为文件内容前后都写入fid(8 byte) 要一起释放
@@ -83,8 +82,8 @@ func (v *Volume)Delete(fid uint64, fileName string) error {
 }
 
 func (v *Volume)NewFile(fid uint64, fileName string, size uint64) (f *File, err error) {
-	v.mutex.Lock()
-	defer v.mutex.Unlock()
+	//v.mutex.Lock()
+	//defer v.mutex.Unlock()
 
 	//var fid uint64
 	//for {
@@ -140,6 +139,9 @@ func (v *Volume)NewFile(fid uint64, fileName string, size uint64) (f *File, err 
 }
 
 func (v *Volume)truncate() {
+	v.mutex.Lock()
+	defer v.mutex.Unlock()
+
 	fi, err := v.dataFile.Stat()
 	if err != nil {
 		panic(err)

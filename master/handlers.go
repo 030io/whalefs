@@ -32,7 +32,7 @@ func (m *Master)masterEntry(w http.ResponseWriter, r *http.Request) {
 		case http.MethodDelete:
 			m.deleteFile(w, r)
 		default:
-			http.Error(w, "", http.StatusMethodNotAllowed)
+			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
 	}
 }
@@ -54,10 +54,12 @@ func (m *Master)heartbeat(w http.ResponseWriter, r *http.Request) {
 		newVms.Machine = remoteIP
 	}
 
-	m.serverMutex.RUnlock()
-	defer m.serverMutex.RLock()
-	m.serverMutex.Lock()
-	defer m.serverMutex.Unlock()
+	//m.serverMutex.RUnlock()
+	//defer m.serverMutex.RLock()
+	//m.serverMutex.Lock()
+	//defer m.serverMutex.Unlock()
+	m.statusMutex.Lock()
+	defer m.statusMutex.Unlock()
 
 	for i, oldVms := range m.VMStatusList {
 		if oldVms.AdminHost == newVms.AdminHost && oldVms.AdminPort == newVms.AdminPort {
@@ -65,7 +67,7 @@ func (m *Master)heartbeat(w http.ResponseWriter, r *http.Request) {
 			for _, vs := range oldVms.VStatusList {
 				vsList := m.VStatusListMap[vs.Id]
 				for i, vs_ := range vsList {
-					if vs.Id == vs_.Id {
+					if vs == vs_ {
 						vsList = append(vsList[:i], vsList[i + 1:]...)
 						break
 					}
@@ -76,6 +78,8 @@ func (m *Master)heartbeat(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	needToCreateVolume := true
+
 	m.VMStatusList = append(m.VMStatusList, newVms)
 	for _, vs := range newVms.VStatusList {
 		vs.vmStatus = newVms
@@ -85,6 +89,14 @@ func (m *Master)heartbeat(w http.ResponseWriter, r *http.Request) {
 		}
 		vsList = append(vsList, vs)
 		m.VStatusListMap[vs.Id] = vsList
+
+		if needToCreateVolume && m.vStatusListIsValid(vsList) {
+			needToCreateVolume = false
+		}
+	}
+
+	if needToCreateVolume && newVms.canCreateVolume() {
+		go m.createVolumeWithReplication(newVms)
 	}
 }
 
@@ -95,9 +107,9 @@ func (m *Master)getFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m.volumeMutex.RLock()
+	m.statusMutex.RLock()
 	vStatusList, ok := m.VStatusListMap[vid]
-	m.volumeMutex.RUnlock()
+	m.statusMutex.RUnlock()
 	if !ok {
 		http.Error(w, "can't find volume", http.StatusNotFound)
 		return
@@ -184,7 +196,7 @@ func (m *Master)uploadFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Error(w, "", http.StatusCreated)
+	w.WriteHeader(http.StatusCreated)
 }
 
 func (m *Master)deleteFile(w http.ResponseWriter, r *http.Request) {
@@ -207,5 +219,5 @@ func (m *Master)deleteFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	m.Metadata.Delete(r.URL.Path)
-	http.Error(w, "", http.StatusAccepted)
+	w.WriteHeader(http.StatusAccepted)
 }
