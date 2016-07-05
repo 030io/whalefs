@@ -144,7 +144,7 @@ func benchmark_() {
 	deleteResult.endTime = time.Now()
 	timeTaken = float64(deleteResult.endTime.UnixNano() - deleteResult.startTime.UnixNano()) / float64(time.Second)
 
-	fmt.Printf("\n\nread %d %dbyte file:\n\n", deleteResult.num, *bmSize)
+	fmt.Printf("\n\ndelete %d %dbyte file:\n\n", deleteResult.num, *bmSize)
 	fmt.Printf("concurrent:             %d\n", deleteResult.concurrent)
 	fmt.Printf("time taken:             %.2f seconds\n", timeTaken)
 	fmt.Printf("completed:              %d\n", deleteResult.completed)

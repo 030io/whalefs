@@ -54,10 +54,6 @@ func (m *Master)heartbeat(w http.ResponseWriter, r *http.Request) {
 		newVms.Machine = remoteIP
 	}
 
-	//m.serverMutex.RUnlock()
-	//defer m.serverMutex.RLock()
-	//m.serverMutex.Lock()
-	//defer m.serverMutex.Unlock()
 	m.statusMutex.Lock()
 	defer m.statusMutex.Unlock()
 
@@ -66,6 +62,10 @@ func (m *Master)heartbeat(w http.ResponseWriter, r *http.Request) {
 			m.VMStatusList = append(m.VMStatusList[:i], m.VMStatusList[i + 1:]...)
 			for _, vs := range oldVms.VStatusList {
 				vsList := m.VStatusListMap[vs.Id]
+				if len(vsList) == 1 {
+					delete(m.VStatusListMap, vs.Id)
+					continue
+				}
 				for i, vs_ := range vsList {
 					if vs == vs_ {
 						vsList = append(vsList[:i], vsList[i + 1:]...)
@@ -81,13 +81,15 @@ func (m *Master)heartbeat(w http.ResponseWriter, r *http.Request) {
 	needToCreateVolume := true
 
 	m.VMStatusList = append(m.VMStatusList, newVms)
+
 	for _, vs := range newVms.VStatusList {
 		vs.vmStatus = newVms
 		vsList := m.VStatusListMap[vs.Id]
 		if vsList == nil {
-			vsList = make([]*VolumeStatus, 0)
+			vsList = []*VolumeStatus{vs}
+		}else {
+			vsList = append(vsList, vs)
 		}
-		vsList = append(vsList, vs)
 		m.VStatusListMap[vs.Id] = vsList
 
 		if needToCreateVolume && m.vStatusListIsValid(vsList) {
@@ -206,7 +208,9 @@ func (m *Master)deleteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	m.statusMutex.RLock()
 	vStatusList, ok := m.VStatusListMap[vid]
+	m.statusMutex.RUnlock()
 	if !ok {
 		http.Error(w, "can't find volume", http.StatusNotFound)
 		return

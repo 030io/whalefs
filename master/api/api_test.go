@@ -8,11 +8,9 @@ import (
 	"github.com/030io/whalefs/volume/manager"
 	"time"
 	"github.com/030io/whalefs/master/api"
-//volumeApi "github.com/030io/whalefs/volume/api"
+	//volumeApi "github.com/030io/whalefs/volume/api"
 	"crypto/rand"
 	"crypto/sha1"
-	"net/http"
-	"fmt"
 )
 
 func TestAPI(t *testing.T) {
@@ -54,8 +52,7 @@ func TestAPI(t *testing.T) {
 	//for i := 1; i < 101; i ++ {
 	//size := i / 10 * 1024
 	for _, size := range []int{1, 1024, 1024 * 1024, 1024 * 1024 * 2} {
-		for i := 0; i < 1; i++ {
-
+		for i := 0; i < 3; i++ {
 			data := make([]byte, size)
 			rand.Read(data)
 
@@ -133,12 +130,10 @@ func TestReplication(t *testing.T) {
 	}
 
 	for _, size := range []int{1, 1024, 1024 * 1024, 1024 * 1024 * 2} {
-		for i := 0; i < 1; i++ {
-
+		for i := 0; i < 3; i++ {
 			data := make([]byte, size)
 			rand.Read(data)
 
-			//test upload
 			tempFile, _ := ioutil.TempFile(os.TempDir(), "")
 			tempFile.Write(data)
 			tempFile.Close()
@@ -148,14 +143,11 @@ func TestReplication(t *testing.T) {
 			}
 
 			//test get
-			resp, err := http.Get(fmt.Sprintf("http://%s:%d%s", "localhost", m.Port, tempFile.Name()))
+			body, err := api.Get("localhost", m.Port, tempFile.Name())
 			if err != nil {
 				t.Fatal(err)
-			}
-			defer resp.Body.Close()
-
-			if resp.StatusCode != http.StatusOK {
-				t.Errorf("%d != http.StatusFound", resp.StatusCode)
+			}else if sha1.Sum(body) != sha1.Sum(data) {
+				t.Error("data wrong")
 			}
 
 			//test delete

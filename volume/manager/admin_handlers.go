@@ -73,8 +73,8 @@ func (vm *VolumeManager)adminPostVolume(w http.ResponseWriter, r *http.Request) 
 func (vm *VolumeManager)adminPostFile(w http.ResponseWriter, r *http.Request) {
 	match := postFileUrl.FindStringSubmatch(r.URL.Path)
 	vid, _ := strconv.Atoi(match[1])
-	volume := vm.Volumes[vid]
-	if volume == nil {
+	volume, ok := vm.Volumes[vid]
+	if !ok {
 		http.Error(w, "can't find volume", http.StatusNotFound)
 		return
 	}

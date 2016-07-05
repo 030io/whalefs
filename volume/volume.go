@@ -82,8 +82,8 @@ func (v *Volume)Delete(fid uint64, fileName string) error {
 }
 
 func (v *Volume)NewFile(fid uint64, fileName string, size uint64) (f *File, err error) {
-	//v.mutex.Lock()
-	//defer v.mutex.Unlock()
+	v.mutex.Lock()
+	defer v.mutex.Unlock()
 
 	//var fid uint64
 	//for {
@@ -102,8 +102,8 @@ func (v *Volume)NewFile(fid uint64, fileName string, size uint64) (f *File, err 
 	}
 	defer func() {
 		if err != nil {
-			if err := v.status.freeSpace(offset, size + 16); err != nil {
-				panic(err)
+			if e := v.status.freeSpace(offset, size + 16); e != nil {
+				panic(e)
 			}
 		}
 	}()
@@ -139,9 +139,6 @@ func (v *Volume)NewFile(fid uint64, fileName string, size uint64) (f *File, err 
 }
 
 func (v *Volume)truncate() {
-	v.mutex.Lock()
-	defer v.mutex.Unlock()
-
 	fi, err := v.dataFile.Stat()
 	if err != nil {
 		panic(err)

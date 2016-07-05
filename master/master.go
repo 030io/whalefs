@@ -94,8 +94,8 @@ func (m *Master)createVolumeWithReplication(vms *VolumeManagerStatus) error {
 
 	if !vms.IsAlive() {
 		return fmt.Errorf("%s:%d is dead", vms.AdminHost, vms.AdminPort)
-	}else if !vms.canCreateVolume() {
-		return fmt.Errorf("%s:%d can't create volume", vms.AdminHost, vms.AdminPort)
+		//}else if !vms.canCreateVolume() {
+		//	return fmt.Errorf("%s:%d can't create volume", vms.AdminHost, vms.AdminPort)
 	}
 
 	temp := []*VolumeManagerStatus{vms}
@@ -162,9 +162,14 @@ func (m *Master)createVolumeWithReplication(vms *VolumeManagerStatus) error {
 		}
 	}
 
-	vStatusList := make([]*VolumeStatus, len(temp))
-	for i, vms := range temp {
-		vStatusList[i] = vms.VStatusList[len(vms.VStatusList) - 1]
+	vStatusList := make([]*VolumeStatus, 0, len(temp))
+	for _, vms := range temp {
+		for _, vs := range vms.VStatusList {
+			if vs.Id == vid {
+				vStatusList = append(vStatusList, vs)
+				break
+			}
+		}
 	}
 	m.statusMutex.RUnlock()
 	m.statusMutex.Lock()
