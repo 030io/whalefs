@@ -68,7 +68,7 @@ func benchmark_() {
 	fmt.Printf("failed:                 %d\n", uploadResult.failed)
 	fmt.Printf("transferred:            %d byte\n", uploadResult.completed * *bmSize)
 	fmt.Printf("request per second:     %.2f\n", float64(uploadResult.num) / timeTaken)
-	fmt.Printf("transferred per second: %.2f b/s\n", float64(uploadResult.completed) * float64(*bmSize) / timeTaken)
+	fmt.Printf("transferred per second: %.2f byte\n", float64(uploadResult.completed) * float64(*bmSize) / timeTaken)
 
 	readResult := &result{
 		concurrent: *bmConcurrent,
@@ -111,7 +111,7 @@ func benchmark_() {
 	fmt.Printf("failed:                 %d\n", readResult.failed)
 	fmt.Printf("transferred:            %d byte\n", readResult.completed * *bmSize)
 	fmt.Printf("request per second:     %.2f\n", float64(readResult.num) / timeTaken)
-	fmt.Printf("transferred per second: %.2f b/s\n", float64(readResult.completed) * float64(*bmSize) / timeTaken)
+	fmt.Printf("transferred per second: %.2f byte\n", float64(readResult.completed) * float64(*bmSize) / timeTaken)
 
 	deleteResult := &result{
 		concurrent: *bmConcurrent,
@@ -154,5 +154,5 @@ func benchmark_() {
 	fmt.Printf("failed:                 %d\n", deleteResult.failed)
 	fmt.Printf("transferred:            %d byte\n", deleteResult.completed * *bmSize)
 	fmt.Printf("request per second:     %.2f\n", float64(deleteResult.num) / timeTaken)
-	fmt.Printf("transferred per second: %.2f b/s\n", float64(deleteResult.completed) * float64(*bmSize) / timeTaken)
+	fmt.Printf("transferred per second: %.2f byte\n", float64(deleteResult.completed) * float64(*bmSize) / timeTaken)
 }
