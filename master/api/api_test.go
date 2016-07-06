@@ -8,7 +8,7 @@ import (
 	"github.com/030io/whalefs/volume/manager"
 	"time"
 	"github.com/030io/whalefs/master/api"
-	//volumeApi "github.com/030io/whalefs/volume/api"
+	volumeApi "github.com/030io/whalefs/volume/api"
 	"crypto/rand"
 	"crypto/sha1"
 )
@@ -150,6 +150,25 @@ func TestReplication(t *testing.T) {
 				t.Error("data wrong")
 			}
 
+			vid, fid, fileName, err := m.Metadata.Get(tempFile.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			body, err = volumeApi.Get(vm1.PublicHost, vm1.PublicPort, vid, fid, fileName)
+			if err != nil {
+				t.Fatal(err)
+			}else if sha1.Sum(body) != sha1.Sum(data) {
+				t.Error("data wrong")
+			}
+
+			body, err = volumeApi.Get(vm2.PublicHost, vm2.PublicPort, vid, fid, fileName)
+			if err != nil {
+				t.Fatal(err)
+			}else if sha1.Sum(body) != sha1.Sum(data) {
+				t.Error("data wrong")
+			}
+
 			//test delete
 			err = api.Delete("localhost", m.Port, tempFile.Name())
 			if err != nil {
@@ -159,7 +178,17 @@ func TestReplication(t *testing.T) {
 			//test get again
 			_, err = api.Get("localhost", m.Port, tempFile.Name())
 			if err == nil {
-				t.Error("delete fail?")
+				t.Error("delete failed?")
+			}
+
+			_, err = volumeApi.Get(vm1.PublicHost, vm1.PublicPort, vid, fid, fileName)
+			if err == nil {
+				t.Fatal("delete failed?")
+			}
+
+			_, err = volumeApi.Get(vm2.PublicHost, vm2.PublicPort, vid, fid, fileName)
+			if err == nil {
+				t.Fatal("delete failed?")
 			}
 		}
 	}

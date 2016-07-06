@@ -44,6 +44,7 @@ func benchmark_() {
 					uploadResult.completed += 1
 				}else {
 					uploadResult.failed += 1
+					fmt.Println("write failed:", err.Error())
 				}
 				mutex.Unlock()
 			}
@@ -86,6 +87,7 @@ func benchmark_() {
 					readResult.completed += 1
 				}else {
 					readResult.failed += 1
+					fmt.Println("read failed:", err.Error())
 				}
 				mutex.Unlock()
 			}
@@ -128,6 +130,7 @@ func benchmark_() {
 					deleteResult.completed += 1
 				}else {
 					deleteResult.failed += 1
+					fmt.Println("delete failed:", err.Error())
 				}
 				mutex.Unlock()
 			}

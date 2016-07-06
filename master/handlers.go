@@ -9,6 +9,7 @@ import (
 	"sync"
 	"math/rand"
 	"path/filepath"
+	"fmt"
 )
 
 func (m *Master)masterEntry(w http.ResponseWriter, r *http.Request) {
@@ -218,10 +219,33 @@ func (m *Master)deleteFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "can't delete file, because it's(volumes) readonly.", http.StatusNotAcceptable)
 	}
 
+	wg := sync.WaitGroup{}
+	var deleteErr []error
 	for _, vStatus := range vStatusList {
-		go vStatus.delete(fid, fileName)
+		wg.Add(1)
+		go func(vStatus *VolumeStatus) {
+			e := vStatus.delete(fid, fileName)
+			if e != nil {
+				deleteErr = append(deleteErr, fmt.Errorf("%s:%d %s", vStatus.vmStatus.AdminHost, vStatus.vmStatus.AdminPort, e.Error()))
+			}
+			wg.Done()
+		}(vStatus)
+	}
+	wg.Wait()
+
+	err = m.Metadata.Delete(r.URL.Path)
+	if err != nil {
+		deleteErr = append(deleteErr, fmt.Errorf("m.Metadata.Delete(%s) %s", r.URL.Path, err.Error()))
 	}
 
-	m.Metadata.Delete(r.URL.Path)
-	w.WriteHeader(http.StatusAccepted)
+	if len(deleteErr) == 0 {
+		w.WriteHeader(http.StatusAccepted)
+	}else {
+		errStr := ""
+		for _, err := range deleteErr {
+			errStr += err.Error() + "\n"
+		}
+		http.Error(w, errStr, http.StatusInternalServerError)
+		return
+	}
 }

@@ -12,7 +12,7 @@ import (
 	"syscall"
 )
 
-const version = "2.2 beta"
+const version = "2.4 beta"
 
 var (
 	app = kingpin.New("whalefs", "A simple filesystem for small file.  Version: " + version)
