@@ -12,8 +12,8 @@ type LevelDBIndex struct {
 	db   *leveldb.DB
 }
 
-func NewLevelDBIndex(dir string, vid int) (index *LevelDBIndex, err error) {
-	path := filepath.Join(dir, strconv.Itoa(vid) + ".index")
+func NewLevelDBIndex(dir string, vid uint64) (index *LevelDBIndex, err error) {
+	path := filepath.Join(dir, strconv.FormatUint(vid, 10) + ".index")
 	index = new(LevelDBIndex)
 	index.path = path
 	index.db, err = leveldb.OpenFile(path, nil)

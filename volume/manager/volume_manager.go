@@ -17,7 +17,7 @@ const MaxHeartbeatDuration time.Duration = time.Second * 5
 
 type VolumeManager struct {
 	DataDir      string
-	Volumes      map[int]*volume.Volume
+	Volumes      map[uint64]*volume.Volume
 
 	AdminPort    int
 	AdminHost    string
@@ -46,11 +46,11 @@ func NewVolumeManager(dir string) (*VolumeManager, error) {
 		panic(err)
 	}
 
-	vm.Volumes = make(map[int]*volume.Volume)
+	vm.Volumes = make(map[uint64]*volume.Volume)
 	for _, fi := range fileInfos {
 		fileName := fi.Name()
 		if strings.HasSuffix(fileName, ".data") {
-			vid, err := strconv.Atoi(fileName[:len(fileName) - 5])
+			vid, err := strconv.ParseUint(fileName[:len(fileName) - 5], 10, 64)
 			if err != nil {
 				panic(err)
 			}

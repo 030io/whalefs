@@ -34,7 +34,7 @@ func (vms *VolumeManagerStatus)canCreateVolume() bool {
 	return true
 }
 
-func (vms *VolumeManagerStatus)createVolume(vid int) error {
+func (vms *VolumeManagerStatus)createVolume(vid uint64) error {
 	err := api.CreateVolume(vms.AdminHost, vms.AdminPort, vid)
 	if err != nil {
 		return err

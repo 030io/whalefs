@@ -12,7 +12,7 @@ import (
 )
 
 type VolumeStatus struct {
-	Id           int
+	Id           uint64
 	DataFileSize uint64
 	//FreeSpace    uint64
 

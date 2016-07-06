@@ -4,28 +4,20 @@ import (
 	"net/http"
 	"fmt"
 	"sync"
-	"strconv"
 	"github.com/syndtr/goleveldb/leveldb/errors"
 	"math/rand"
-)
-
-const (
-	vidKey = "__vid"
-	fidKey = "__fid"
+	"time"
 )
 
 type Master struct {
 	Port           int
 
 	VMStatusList   []*VolumeManagerStatus
-	VStatusListMap map[int][]*VolumeStatus
+	VStatusListMap map[uint64][]*VolumeStatus
 	statusMutex    sync.RWMutex
 
 	Server         *http.ServeMux
 	serverMutex    sync.RWMutex
-
-	fidMutex       sync.Mutex
-	vidMutex       sync.Mutex
 
 	Metadata       Metadata
 	Replication    [3]int
@@ -35,7 +27,7 @@ func NewMaster() (*Master, error) {
 	m := new(Master)
 	m.Port = 8888
 	m.VMStatusList = make([]*VolumeManagerStatus, 0, 1)
-	m.VStatusListMap = make(map[int][]*VolumeStatus)
+	m.VStatusListMap = make(map[uint64][]*VolumeStatus)
 
 	m.Server = http.NewServeMux()
 	m.Server.HandleFunc("/", m.masterEntry)
@@ -189,47 +181,10 @@ func (m *Master)createVolumeWithReplication(vms *VolumeManagerStatus) error {
 	return nil
 }
 
-func (m *Master)generateVid() int {
-	m.vidMutex.Lock()
-	defer m.vidMutex.Unlock()
-
-	value, err := m.Metadata.getConfig(vidKey)
-	if err != nil {
-		value = "0"
-	}
-
-	vid, _ := strconv.Atoi(value)
-	for i := 0; i < 3; i++ {
-		err = m.Metadata.setConfig(vidKey, strconv.Itoa(vid + 1))
-		if err == nil {
-			break
-		}
-	}
-	if err != nil {
-		panic(err)
-	}
-
-	return vid
+func (m *Master)generateVid() uint64 {
+	return uint64(time.Now().UnixNano())
 }
 
 func (m *Master)generateFid() uint64 {
-	m.fidMutex.Lock()
-	defer m.fidMutex.Unlock()
-
-	value, err := m.Metadata.getConfig(fidKey)
-	if err != nil {
-		value = "0"
-	}
-	fid, _ := strconv.ParseUint(value, 10, 64)
-	for i := 0; i < 3; i++ {
-		err = m.Metadata.setConfig(fidKey, strconv.FormatUint(fid + 1, 10))
-		if err == nil {
-			break
-		}
-	}
-	if err != nil {
-		panic(err)
-	}
-
-	return fid
+	return uint64(time.Now().UnixNano())
 }

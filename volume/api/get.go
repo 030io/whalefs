@@ -8,7 +8,7 @@ import (
 
 const bufferSize = 512 * 1024
 
-func Get(host string, port int, vid int, fid uint64, filename string) ([]byte, error) {
+func Get(host string, port int, vid uint64, fid uint64, filename string) ([]byte, error) {
 	url := fmt.Sprintf("http://%s:%d/%d/%d/%s", host, port, vid, fid, filename)
 	resp, err := http.Get(url)
 	if err != nil {

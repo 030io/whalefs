@@ -31,8 +31,8 @@ type Status struct {
 	spaceMutex sync.Mutex
 }
 
-func NewStatus(dir string, vid int) (status *Status, err error) {
-	path := filepath.Join(dir, strconv.Itoa(vid) + ".status")
+func NewStatus(dir string, vid uint64) (status *Status, err error) {
+	path := filepath.Join(dir, strconv.FormatUint(vid, 10) + ".status")
 	status = new(Status)
 	status.path = path
 	status.db, err = leveldb.OpenFile(path, nil)

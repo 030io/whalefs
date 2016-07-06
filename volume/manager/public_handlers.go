@@ -40,7 +40,7 @@ func (vm *VolumeManager)publicEntry(w http.ResponseWriter, r *http.Request) {
 func (vm *VolumeManager)publicReadFile(w http.ResponseWriter, r *http.Request) {
 	match := publicUrlRegex.FindStringSubmatch(r.URL.Path)
 
-	vid, _ := strconv.Atoi(match[1])
+	vid, _ := strconv.ParseUint(match[1], 10, 64)
 	volume := vm.Volumes[vid]
 	if volume == nil {
 		http.Error(w, "can't find volume", http.StatusNotFound)

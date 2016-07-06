@@ -37,19 +37,19 @@ func NewMetadataRedis(host string, port int, password string, database int) (*Me
 	return mr, nil
 }
 
-func (m *MetadataRedis)Get(filePath string) (vid int, fid uint64, fileName string, err error) {
+func (m *MetadataRedis)Get(filePath string) (vid uint64, fid uint64, fileName string, err error) {
 	url, err := m.client.Get(filePath).Result()
 	if err != nil {
 		return
 	}
 	match := urlReg.FindStringSubmatch(url)
-	vid, _ = strconv.Atoi(match[1])
+	vid, _ = strconv.ParseUint(match[1], 10, 64)
 	fid, _ = strconv.ParseUint(match[2], 10, 64)
 	fileName = match[3]
 	return
 }
 
-func (m *MetadataRedis)Set(filePath string, vid int, fid uint64, fileName string) error {
+func (m *MetadataRedis)Set(filePath string, vid uint64, fid uint64, fileName string) error {
 	url := fmt.Sprintf("/%d/%d/%s", vid, fid, fileName)
 	_, err := m.client.Set(filePath, url).Result()
 	return err
@@ -64,15 +64,6 @@ func (m *MetadataRedis)Delete(filePath string) error {
 func (m *MetadataRedis)Has(filePath string) bool {
 	_, err := m.client.Get(filePath).Result()
 	return err != redis.Nil
-}
-
-func (m *MetadataRedis)setConfig(key string, value string) error {
-	_, err := m.client.Set(key, value).Result()
-	return err
-}
-
-func (m *MetadataRedis)getConfig(key string) (string, error) {
-	return m.client.Get(key).Result()
 }
 
 func (m *MetadataRedis)Close() error {

@@ -59,7 +59,7 @@ func (vm *VolumeManager)adminEntry(w http.ResponseWriter, r *http.Request) {
 
 func (vm *VolumeManager)adminPostVolume(w http.ResponseWriter, r *http.Request) {
 	match := postVolumeUrl.FindStringSubmatch(r.URL.Path)
-	vid, _ := strconv.Atoi(match[1])
+	vid, _ := strconv.ParseUint(match[1], 10, 64)
 	volume, err := volume.NewVolume(vm.DataDir, vid)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -72,7 +72,7 @@ func (vm *VolumeManager)adminPostVolume(w http.ResponseWriter, r *http.Request) 
 
 func (vm *VolumeManager)adminPostFile(w http.ResponseWriter, r *http.Request) {
 	match := postFileUrl.FindStringSubmatch(r.URL.Path)
-	vid, _ := strconv.Atoi(match[1])
+	vid, _ := strconv.ParseUint(match[1], 10, 64)
 	volume, ok := vm.Volumes[vid]
 	if !ok {
 		http.Error(w, "can't find volume", http.StatusNotFound)
@@ -117,7 +117,7 @@ func (vm *VolumeManager)adminPostFile(w http.ResponseWriter, r *http.Request) {
 
 func (vm *VolumeManager)adminDeleteFile(w http.ResponseWriter, r *http.Request) {
 	match := deleteFileUrl.FindStringSubmatch(r.URL.Path)
-	vid, _ := strconv.Atoi(match[1])
+	vid, _ := strconv.ParseUint(match[1], 10, 64)
 	volume := vm.Volumes[vid]
 	if volume == nil {
 		http.Error(w, "can't find volume", http.StatusNotFound)

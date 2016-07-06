@@ -20,7 +20,7 @@ func TestAPI(t *testing.T) {
 
 	go vm.Start()
 
-	testVid := 1
+	testVid := uint64(1)
 	//test create volume
 	err = api.CreateVolume(vm.AdminHost, vm.AdminPort, testVid)
 	if err != nil {

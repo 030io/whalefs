@@ -14,7 +14,7 @@ import (
 //"encoding/json"
 )
 
-func Upload(host string, port int, vid int, fid uint64, filePath string, fileName string) (err error) {
+func Upload(host string, port int, vid uint64, fid uint64, filePath string, fileName string) (err error) {
 	if fileName == "" {
 		fileName = filepath.Base(filePath)
 	}

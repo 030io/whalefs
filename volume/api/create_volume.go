@@ -7,7 +7,7 @@ import (
 	"fmt"
 )
 
-func CreateVolume(host string, port int, vid int) error {
+func CreateVolume(host string, port int, vid uint64) error {
 	url := fmt.Sprintf("http://%s:%d/%d/", host, port, vid)
 	resp, err := http.Post(url, "text/plain", nil)
 	if err != nil {

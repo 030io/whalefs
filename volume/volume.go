@@ -13,7 +13,7 @@ import (
 const truncateSize = 1024 * 1024 * 1024
 
 type Volume struct {
-	Id           int
+	Id           uint64
 	MaxSize      uint64
 	DataFileSize uint64
 
@@ -23,8 +23,8 @@ type Volume struct {
 	mutex        sync.Mutex
 }
 
-func NewVolume(dir string, vid int) (v *Volume, err error) {
-	path := filepath.Join(dir, strconv.Itoa(vid) + ".data")
+func NewVolume(dir string, vid uint64) (v *Volume, err error) {
+	path := filepath.Join(dir, strconv.FormatUint(vid, 10) + ".data")
 	v = new(Volume)
 	v.Id = vid
 	v.dataFile, err = os.OpenFile(path, os.O_CREATE | os.O_RDWR, 0666)
