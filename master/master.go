@@ -6,6 +6,7 @@ import (
 	"sync"
 	"strconv"
 	"github.com/syndtr/goleveldb/leveldb/errors"
+	"math/rand"
 )
 
 const (
@@ -100,8 +101,16 @@ func (m *Master)createVolumeWithReplication(vms *VolumeManagerStatus) error {
 
 	temp := []*VolumeManagerStatus{vms}
 
+	VMStatusList := append(make([]*VolumeManagerStatus, 0, len(m.VMStatusList)), m.VMStatusList...)
+	length := len(VMStatusList)
+	for i := 0; i < length; i++ {
+		a := rand.Intn(length)
+		b := rand.Intn(length)
+		VMStatusList[a], VMStatusList[b] = VMStatusList[b], VMStatusList[a]
+	}
+
 	find0:
-	for _, vms := range m.VMStatusList {
+	for _, vms := range VMStatusList {
 		if len(temp) == 1 + m.Replication[0] {
 			break
 		}
@@ -119,7 +128,7 @@ func (m *Master)createVolumeWithReplication(vms *VolumeManagerStatus) error {
 	}
 
 	find1:
-	for _, vms := range m.VMStatusList {
+	for _, vms := range VMStatusList {
 		if len(temp) == 1 + m.Replication[0] + m.Replication[1] {
 			break
 		}
@@ -137,7 +146,7 @@ func (m *Master)createVolumeWithReplication(vms *VolumeManagerStatus) error {
 	}
 
 	find2:
-	for _, vms := range m.VMStatusList {
+	for _, vms := range VMStatusList {
 		if len(temp) == 1 + m.Replication[0] + m.Replication[1] + m.Replication[2] {
 			break
 		}
