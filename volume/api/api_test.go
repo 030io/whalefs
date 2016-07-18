@@ -52,6 +52,35 @@ func TestAPI(t *testing.T) {
 		t.Errorf("%s != %s", data, testData)
 	}
 
+	//test get file range
+	data, err = api.GetRange(vm.PublicHost, vm.PublicPort, testVid, testFid, fileName, 0, 10)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if string(data) != string(testData) {
+		t.Errorf("%s != %s", data, testData)
+	}
+
+	data, err = api.GetRange(vm.PublicHost, vm.PublicPort, testVid, testFid, fileName, 0, 4)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if string(data) != string(testData[0:4]) {
+		t.Errorf("%s != %s", data, testData[0:4])
+	}
+
+	//test get file range
+	data, err = api.GetRange(vm.PublicHost, vm.PublicPort, testVid, testFid, fileName, 4, 6)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if string(data) != string(testData[4:]) {
+		t.Errorf("%s != %s", data, testData[4:])
+	}
+
 	//test delete file
 	err = api.Delete(vm.AdminHost, vm.AdminPort, testVid, testFid, fileName)
 	if err != nil {

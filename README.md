@@ -10,8 +10,7 @@
 ##安装
 
 ```sh
-$ go get github.com/030io/whalefs
-$ go install github.com/030io/whalefs
+$ go get -u github.com/030io/whalefs
 ```
 
 ##帮助

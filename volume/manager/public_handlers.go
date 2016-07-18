@@ -71,6 +71,7 @@ func (vm *VolumeManager)publicReadFile(w http.ResponseWriter, r *http.Request) {
 
 		var length uint64
 		if start > file.Info.Size {
+			start = file.Info.Size
 			length = 0
 		}else if ranges[1] != "" {
 			end, err := strconv.ParseUint(ranges[1], 10, 64)
@@ -79,17 +80,17 @@ func (vm *VolumeManager)publicReadFile(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			if end > file.Info.Size {
-				end = file.Info.Size
+			if end > file.Info.Size - 1 {
+				end = file.Info.Size - 1
 			}
 
-			length = end - start
+			length = end - start + 1
 		}else {
 			length = file.Info.Size - start
 		}
 
 		w.Header().Set("Content-Length", strconv.FormatUint(length, 10))
-		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, start + length, file.Info.Size))
+		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, start + length - 1, file.Info.Size))
 
 		if length != 0 {
 			file.Seek(int64(start), 0)
