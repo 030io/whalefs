@@ -33,7 +33,7 @@ func GetRange(host string, port int, vid uint64, fid uint64, filename string, st
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusOK {
+	if resp.StatusCode == http.StatusPartialContent {
 		return ioutil.ReadAll(resp.Body)
 	}else {
 		return nil, fmt.Errorf("%d != 200", resp.StatusCode)

@@ -91,6 +91,7 @@ func (vm *VolumeManager)publicReadFile(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Content-Length", strconv.FormatUint(length, 10))
 		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, start + length - 1, file.Info.Size))
+		w.WriteHeader(http.StatusPartialContent)
 
 		if length != 0 {
 			file.Seek(int64(start), 0)
