@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"fmt"
 	"io/ioutil"
-	"github.com/syndtr/goleveldb/leveldb/errors"
+	"errors"
 )
 
 func Delete(host string, port int, vid uint64, fid uint64, filename string) error {

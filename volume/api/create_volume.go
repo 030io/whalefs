@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 	"io/ioutil"
-	"github.com/syndtr/goleveldb/leveldb/errors"
+	"errors"
 	"fmt"
 )
 

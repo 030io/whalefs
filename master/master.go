@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"fmt"
 	"sync"
-	"github.com/syndtr/goleveldb/leveldb/errors"
+	"errors"
 	"math/rand"
 	"time"
 )
