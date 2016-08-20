@@ -1,5 +1,6 @@
 # whalefs
 目标: PB级分布式文件存储,优化海量小文件存储.
+volume存储原理基于[facebook haystack](http://www.usenix.org/event/osdi10/tech/full_papers/Beaver.pdf)
 
 ##特性
 
@@ -29,7 +30,7 @@ $ whalefs master --redisIP localhost --redisPort 6379 --redisPW password --redis
 # 冗余: --replication abc
 # a: 相同machine的备份数
 # b: 相同datacenter但不同machine的备份数
-# b: 不同datacenter且不同machine的备份数
+# c: 不同datacenter且不同machine的备份数
 ```
 
 ####volume manager(存储节点)
@@ -105,5 +106,3 @@ transferred per second: 3382590.28 b/s
 
 -   `--replication` 冗余需要在搭建时就确定好,在运行过程中更改master的冗余选项,volume有可能变成只读,需要手动平衡(复制/删除)volume
 -   volume manager节点的 `machine` `dataCenter` 同上
--   数据无价,且行且珍惜
--   如果觉得feature不够,不合你胃口,直接fork,就是这么任性
