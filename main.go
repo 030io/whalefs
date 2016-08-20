@@ -20,7 +20,8 @@ var (
 	verbose = app.Flag("verbose", "verbose level").Short('v').Default("0").Int()
 
 	master = app.Command("master", "master server")
-	masterPort = master.Flag("port", "master port").Short('p').Default("8888").Int()
+	masterPort = master.Flag("port", "master port(CRUD)").Short('p').Default("8888").Int()
+	masterPublicPort = master.Flag("publicPort", "master public port(only 'GET')").Default("8899").Int()
 	masterReplication = master.Flag("replication", "replication setting").Short('r').Default("000").String()
 	masterRedisServer = master.Flag("redisIP", "ip of redis server").Default("localhost").String()
 	masterRedisPort = master.Flag("redisPort", "ip of redis server").Default("6379").Int()
@@ -64,6 +65,7 @@ func main() {
 			panic(err)
 		}
 		m.Port = *masterPort
+		m.PublicPort = *masterPublicPort
 		for i, c := range *masterReplication {
 			m.Replication[i] = int(c) - int('0')
 		}

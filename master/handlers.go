@@ -12,6 +12,17 @@ import (
 	"fmt"
 )
 
+func (m *Master)publicEntry(w http.ResponseWriter, r *http.Request) {
+	m.serverMutex.RLock()
+	defer m.serverMutex.RUnlock()
+
+	if r.Method == http.MethodGet || r.Method == http.MethodHead {
+		m.getFile(w, r)
+	}else {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
 func (m *Master)masterEntry(w http.ResponseWriter, r *http.Request) {
 	m.serverMutex.RLock()
 	defer m.serverMutex.RUnlock()

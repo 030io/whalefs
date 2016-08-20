@@ -11,6 +11,7 @@ import (
 
 type Master struct {
 	Port           int
+	PublicPort     int
 
 	VMStatusList   []*VolumeManagerStatus
 	VStatusListMap map[uint64][]*VolumeStatus
@@ -18,6 +19,7 @@ type Master struct {
 
 	Server         *http.ServeMux
 	serverMutex    sync.RWMutex
+	PublicServer   *http.ServeMux
 
 	Metadata       Metadata
 	Replication    [3]int
@@ -26,11 +28,14 @@ type Master struct {
 func NewMaster() (*Master, error) {
 	m := new(Master)
 	m.Port = 8888
+	m.PublicPort = 8899
 	m.VMStatusList = make([]*VolumeManagerStatus, 0, 1)
 	m.VStatusListMap = make(map[uint64][]*VolumeStatus)
 
 	m.Server = http.NewServeMux()
 	m.Server.HandleFunc("/", m.masterEntry)
+	m.PublicServer = http.NewServeMux()
+	m.PublicServer.HandleFunc("/", m.publicEntry)
 
 	m.Replication = [3]int{
 		0, //number of replica in the same machine
@@ -41,6 +46,13 @@ func NewMaster() (*Master, error) {
 }
 
 func (m *Master)Start() {
+	go func() {
+		err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", m.PublicPort), m.PublicServer)
+		if err != nil {
+			panic(err)
+		}
+	}()
+
 	err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", m.Port), m.Server)
 	if err != nil {
 		panic(err)

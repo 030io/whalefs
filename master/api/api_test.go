@@ -94,6 +94,7 @@ func TestReplication(t *testing.T) {
 	}
 	m.Metadata, _ = master.NewMetadataRedis("localhost", 6379, "", 11)
 	m.Port = 7998
+	m.PublicPort = 7997
 	m.Replication = [3]int{1, 0, 0}
 	go m.Start()
 
