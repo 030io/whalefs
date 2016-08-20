@@ -38,6 +38,8 @@ type Size interface {
 
 func (vm *VolumeManager)adminEntry(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
+	case http.MethodGet, http.MethodHead:
+		vm.publicEntry(w, r)
 	case http.MethodPost:
 		if postFileUrl.MatchString(r.URL.Path) {
 			vm.adminPostFile(w, r)

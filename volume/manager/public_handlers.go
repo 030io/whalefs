@@ -22,15 +22,10 @@ func init() {
 func (vm *VolumeManager)publicEntry(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet, http.MethodHead:
-		switch r.URL.Path {
-		case "/favicon.ico":
+		if publicUrlRegex.MatchString(r.URL.Path) {
+			vm.publicReadFile(w, r)
+		}else {
 			http.NotFound(w, r)
-		default:
-			if publicUrlRegex.MatchString(r.URL.Path) {
-				vm.publicReadFile(w, r)
-			}else {
-				http.NotFound(w, r)
-			}
 		}
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
