@@ -20,8 +20,8 @@ var (
 	app = kingpin.New("whalefs", "A simple filesystem for small file.  Version: " + version)
 
 	verbose = app.Flag("verbose", "verbose level").Short('v').Default("0").Int()
-	gcpercent = app.Flag("gcpercent", "gc percent(default: 500)").Default("500").Int()
-	keepAlive = app.Flag("keepAlive", "keep alive per host").Default("1000").Int()
+	gcpercent = app.Flag("gcpercent", "gc percent(default: 300)").Default("300").Int()
+	keepAlive = app.Flag("keepAlive", "keep alive per host(default: 1000)").Default("1000").Int()
 
 	master = app.Command("master", "master server")
 	masterPort = master.Flag("port", "master port(CRUD)").Short('p').Default("8888").Int()
@@ -52,13 +52,14 @@ var (
 )
 
 func main() {
-	debug.SetGCPercent(*gcpercent)
-	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = *keepAlive
-
 	signals := make(chan os.Signal)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))
+
+	debug.SetGCPercent(*gcpercent)
+	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = *keepAlive
+
 	switch command {
 	case master.FullCommand():
 		m, err := masterServer.NewMaster()

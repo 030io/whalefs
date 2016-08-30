@@ -40,6 +40,7 @@ func Benchmark(masterHost string, masterPort int, concurrent int, num int, size 
 	dataMd5 := md5.Sum(randBytes)
 
 	testFile, _ := ioutil.TempFile(os.TempDir(), "")
+	testFile.Truncate(int64(size))
 	io.Copy(testFile, bytes.NewReader(randBytes))
 	testFile.Close()
 	defer os.Remove(testFile.Name())
