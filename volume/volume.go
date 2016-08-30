@@ -144,6 +144,8 @@ func (v *Volume)truncate() {
 		panic(err)
 	}
 
+	//TODO: 判断大小是否超过MaxSize
+
 	err = v.dataFile.Truncate(fi.Size() + truncateSize)
 	if err != nil {
 		panic(err)

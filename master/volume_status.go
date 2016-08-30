@@ -72,42 +72,12 @@ func (vs *VolumeStatus)uploadFile(fid uint64, fileName string, data []byte) erro
 		return errors.New(fmt.Sprintf("%d != http.StatusCreated  body: %s", resp.StatusCode, body))
 	}
 	return nil
-
-	//url_, _ := url.Parse(
-	//	fmt.Sprintf(
-	//		"http://%s:%d/%d/%d/%s",
-	//		vs.vmStatus.AdminHost,
-	//		vs.vmStatus.AdminPort,
-	//		vs.Id,
-	//		fid,
-	//		fileName))
-	//
-	//request := &http.Request{
-	//	Proto: r.Proto,
-	//	ProtoMajor: r.ProtoMajor,
-	//	ProtoMinor: r.ProtoMinor,
-	//	Method: r.Method,
-	//	URL: url_,
-	//	Header: r.Header,
-	//	Host: r.Host,
-	//	Body: r.Body,
-	//	ContentLength: r.ContentLength,
-	//}
-	//
-	//resp, err := http.DefaultClient.Do(request)
-	//if err != nil {
-	//	return err
-	//}
-	//defer resp.Body.Close()
-	//
-	//if resp.StatusCode == http.StatusCreated {
-	//	return nil
-	//}else {
-	//	body, _ := ioutil.ReadAll(resp.Body)
-	//	return fmt.Errorf("%d != http.StatusCreated  body: %s", resp.StatusCode, body)
-	//}
 }
 
 func (vs *VolumeStatus)delete(fid uint64, fileName string) error {
 	return api.Delete(vs.vmStatus.AdminHost, vs.vmStatus.AdminPort, vs.Id, fid, fileName)
+}
+
+func (vs *VolumeStatus)IsWritable() bool {
+	//TODO: is writable
 }
