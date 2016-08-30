@@ -11,14 +11,12 @@ import (
 	"fmt"
 )
 
-//var fidKey []byte //key="\x00" value=uint64(big endian 8byte)
 var reversedsizeOffset []byte //key= "\x01"+Reversesize(8 byte)+offset(8 byte) value=[]
 var offsetSize []byte //key= "\x02"+offset(8 byte)+size(8 byte) value=[]
 
 func init() {
 	reversedsizeOffset = make([]byte, 1 + 16)
 	offsetSize = make([]byte, 1 + 16)
-	//fidKey = []byte{'\x00'}
 	reversedsizeOffset[0] = '\x11'
 	offsetSize[0] = '\x22'
 }
@@ -27,7 +25,6 @@ type Status struct {
 	path       string
 	db         *leveldb.DB
 
-	//fidMutex   sync.Mutex
 	spaceMutex sync.Mutex
 }
 
@@ -38,27 +35,6 @@ func NewStatus(dir string, vid uint64) (status *Status, err error) {
 	status.db, err = leveldb.OpenFile(path, nil)
 	return status, err
 }
-
-//func (s *Status)newFid() (fid uint64) {
-//	s.fidMutex.Lock()
-//	defer s.fidMutex.Unlock()
-//
-//	b, err := s.db.Get(fidKey, nil)
-//	if err != nil || b == nil {
-//		fid = 0
-//		b = make([]byte, 8)
-//	}else {
-//		fid = binary.BigEndian.Uint64(b)
-//	}
-//
-//	binary.BigEndian.PutUint64(b, fid + 1)
-//	err = s.db.Put(fidKey, b, nil)
-//	if err != nil {
-//		panic(err)
-//	}
-//
-//	return
-//}
 
 func (s *Status)newSpace(size uint64) (offset uint64, err error) {
 	s.spaceMutex.Lock()
@@ -126,7 +102,7 @@ func (s *Status)freeSpace(offset uint64, size uint64) error {
 			//if nOffset == offset {
 			//	transaction.Discard()
 			//return errors.New("space already free")
-		}else if nOffset == offset + size {
+		} else if nOffset == offset + size {
 			transaction.Delete(key, nil)
 			size += nSize
 
@@ -144,7 +120,7 @@ func (s *Status)freeSpace(offset uint64, size uint64) error {
 			panic(fmt.Errorf("pOffset: %d + pSize: %d > offset: %d", pOffset, pSize, offset))
 			//transaction.Discard()
 			//return errors.New("space alread free")
-		}else if pOffset + pSize == offset {
+		} else if pOffset + pSize == offset {
 			transaction.Delete(key, nil)
 			offset = pOffset
 			size += pSize
