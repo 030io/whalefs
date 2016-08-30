@@ -5,19 +5,23 @@ import (
 	"os"
 	masterServer "github.com/030io/whalefs/master"
 	"github.com/030io/whalefs/volume/manager"
+	"github.com/030io/whalefs/tool/benchmark"
 	"fmt"
 	"net"
 	"net/http"
 	"os/signal"
 	"syscall"
+	"runtime/debug"
 )
 
-const version = "2.4 beta"
+const version = "2.6 beta"
 
 var (
 	app = kingpin.New("whalefs", "A simple filesystem for small file.  Version: " + version)
 
 	verbose = app.Flag("verbose", "verbose level").Short('v').Default("0").Int()
+	gcpercent = app.Flag("gcpercent", "gc percent(default: 500)").Default("500").Int()
+	keepAlive = app.Flag("keepAlive", "keep alive per host").Default("1000").Int()
 
 	master = app.Command("master", "master server")
 	masterPort = master.Flag("port", "master port(CRUD)").Short('p').Default("8888").Int()
@@ -39,16 +43,17 @@ var (
 	vmMachine = volumeManager.Flag("machine", "machine tag of volume manager server (defalut: auto detect by master)").String()
 	vmDataCenter = volumeManager.Flag("dataCenter", "datacenter tag of volume manager server (defalut: \"\")").String()
 
-	benchmark = app.Command("benchmark", "benchmark")
-	bmMasterHost = benchmark.Flag("masterHost", "host of master server").Default("localhost").String()
-	bmMasterPort = benchmark.Flag("masterPort", "post of master server").Default("8888").Int()
-	bmConcurrent = benchmark.Flag("concurrent", "concurrent").Default("16").Int()
-	bmNum = benchmark.Flag("num", "number of file write/read").Default("1000").Int()
-	bmSize = benchmark.Flag("size", "size of file write/read").Default("1024").Int()
+	benchmark_ = app.Command("benchmark", "benchmark")
+	bmMasterHost = benchmark_.Flag("masterHost", "host of master server").Default("localhost").String()
+	bmMasterPort = benchmark_.Flag("masterPort", "post of master server").Default("8888").Int()
+	bmConcurrent = benchmark_.Flag("concurrent", "concurrent").Default("16").Int()
+	bmNum = benchmark_.Flag("num", "number of file write/read").Default("1000").Int()
+	bmSize = benchmark_.Flag("size", "size of file write/read").Default("1024").Int()
 )
 
 func main() {
-	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = 1024
+	debug.SetGCPercent(*gcpercent)
+	http.DefaultTransport.(*http.Transport).MaxIdleConnsPerHost = *keepAlive
 
 	signals := make(chan os.Signal)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
@@ -123,7 +128,7 @@ func main() {
 		}()
 
 		vm.Start()
-	case benchmark.FullCommand():
+	case benchmark_.FullCommand():
 		go func() {
 			sig := <-signals
 			switch sig {
@@ -134,7 +139,7 @@ func main() {
 			}
 		}()
 
-		benchmark_()
+		benchmark.Benchmark(*bmMasterHost, *bmMasterPort, *bmConcurrent, *bmNum, *bmSize)
 	}
 }
 
