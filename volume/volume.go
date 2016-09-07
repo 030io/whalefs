@@ -10,17 +10,19 @@ import (
 	"errors"
 )
 
-const truncateSize = 1024 * 1024 * 1024
+var (
+	TruncateSize uint64 = 1 << 30 //1GB
+	MaxVolumeSize uint64 = 512 * TruncateSize //512GB
+)
 
 type Volume struct {
-	Id           uint64
-	MaxSize      uint64
-	DataFileSize uint64
+	Id        uint64
+	WriteAble bool
 
-	index        Index
-	status       *Status
-	dataFile     *os.File
-	mutex        sync.Mutex
+	index     Index
+	status    *Status
+	dataFile  *os.File
+	mutex     sync.Mutex
 }
 
 func NewVolume(dir string, vid uint64) (v *Volume, err error) {
@@ -29,8 +31,17 @@ func NewVolume(dir string, vid uint64) (v *Volume, err error) {
 	v.Id = vid
 	v.dataFile, err = os.OpenFile(path, os.O_CREATE | os.O_RDWR, 0666)
 	if err != nil {
-		return nil, err
+		if os.IsPermission(err) {
+			v.dataFile, err = os.OpenFile(path, os.O_RDONLY, 0)
+			if err != nil {
+				return nil, err
+			}
+			v.WriteAble = false
+		} else {
+			return nil, err
+		}
 	}
+	v.WriteAble = true
 
 	v.index, err = NewLevelDBIndex(dir, vid)
 	if err != nil {
@@ -42,9 +53,6 @@ func NewVolume(dir string, vid uint64) (v *Volume, err error) {
 		return nil, err
 	}
 
-	fi, _ := v.dataFile.Stat()
-	v.DataFileSize = uint64(fi.Size())
-
 	return v, nil
 }
 
@@ -55,7 +63,7 @@ func (v *Volume)Get(fid uint64) (*File, error) {
 	fi, err := v.index.Get(fid)
 	if err == nil {
 		return &File{DataFile: v.dataFile, Info: fi}, nil
-	}else {
+	} else {
 		return nil, err
 	}
 }
@@ -67,7 +75,7 @@ func (v *Volume)Delete(fid uint64, fileName string) error {
 	file, err := v.Get(fid)
 	if err != nil {
 		return err
-	}else if file.Info.FileName != fileName {
+	} else if file.Info.FileName != fileName {
 		return errors.New("filename is wrong")
 	}
 
@@ -85,13 +93,6 @@ func (v *Volume)NewFile(fid uint64, fileName string, size uint64) (f *File, err 
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
 
-	//var fid uint64
-	//for {
-	//	fid = v.status.newFid()
-	//	if v.index.Has(fid) == false {
-	//		break
-	//	}
-	//}
 	if v.index.Has(fid) {
 		return nil, errors.New("fid is existed")
 	}
@@ -133,30 +134,26 @@ func (v *Volume)NewFile(fid uint64, fileName string, size uint64) (f *File, err 
 	err = v.index.Set(fileInfo)
 	if err != nil {
 		return nil, err
-	}else {
+	} else {
 		return &File{DataFile: v.dataFile, Info: fileInfo}, nil
 	}
 }
 
 func (v *Volume)truncate() {
-	fi, err := v.dataFile.Stat()
+	currentDatafileSize := v.GetDatafileSize()
+	if currentDatafileSize >= MaxVolumeSize {
+		return
+	}
+
+	err := v.dataFile.Truncate(int64(currentDatafileSize) + int64(TruncateSize))
 	if err != nil {
 		panic(err)
 	}
 
-	//TODO: 判断大小是否超过MaxSize
-
-	err = v.dataFile.Truncate(fi.Size() + truncateSize)
+	err = v.status.freeSpace(currentDatafileSize, TruncateSize)
 	if err != nil {
 		panic(err)
 	}
-
-	err = v.status.freeSpace(uint64(fi.Size()), truncateSize)
-	if err != nil {
-		panic(err)
-	}
-
-	v.DataFileSize = uint64(fi.Size() + truncateSize)
 }
 
 func (v *Volume)newSpace(size uint64) (uint64, error) {
@@ -185,4 +182,29 @@ func (v *Volume)Close() {
 
 	v.index.Close()
 	v.index = nil
+}
+
+func (v *Volume)GetDatafileSize() uint64 {
+	fi, err := v.dataFile.Stat()
+	if err != nil {
+		panic(err)
+	}
+	return uint64(fi.Size())
+}
+
+func (v *Volume)GetMaxFreeSpace() uint64 {
+	currentDatafileSize := v.GetDatafileSize()
+	var maxFreeSpace uint64
+	if currentDatafileSize < MaxVolumeSize {
+		maxFreeSpace = v.status.getMaxFreeSpace() + MaxVolumeSize - currentDatafileSize
+	} else {
+		maxFreeSpace = v.status.getMaxFreeSpace()
+	}
+
+	//fid前后各占8个字节
+	if maxFreeSpace > 16 {
+		return maxFreeSpace - 16
+	} else {
+		return 0
+	}
 }

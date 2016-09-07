@@ -64,13 +64,13 @@ func (m *Master)Stop() {
 	m.Metadata.Close()
 }
 
-func (m *Master)getWritableVolumes() ([]*VolumeStatus, error) {
+func (m *Master)getWritableVolumes(size uint64) ([]*VolumeStatus, error) {
 	m.statusMutex.RLock()
 	defer m.statusMutex.RUnlock()
 
 	//map 迭代是随机的,所以不需要手动负载均衡
 	for _, vStatusList := range m.VStatusListMap {
-		if m.vStatusListIsValid(vStatusList) {
+		if m.vStatusListIsValid(vStatusList) && m.vStatusListIsWritable(vStatusList, size) {
 			return vStatusList, nil
 		}
 	}
@@ -89,8 +89,16 @@ func (m *Master)vStatusListIsValid(vStatusList []*VolumeStatus) bool {
 		return false
 	}
 
-	//TODO: check volume writable
 	return true
+}
+
+func (m *Master)vStatusListIsWritable(vStatusList []*VolumeStatus, size uint64) bool {
+	for _, vs := range vStatusList {
+		if !vs.IsWritable(size) {
+			return false
+		}
+	}
+	return len(vStatusList) != 0
 }
 
 func (m *Master)createVolumeWithReplication(vms *VolumeManagerStatus) error {

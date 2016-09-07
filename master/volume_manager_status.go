@@ -8,30 +8,30 @@ import (
 const MaxHeartbeatDuration time.Duration = time.Second * 10
 
 type VolumeManagerStatus struct {
-	AdminHost     string
-	AdminPort     int
-	PublicHost    string
-	PublicPort    int
+	AdminHost       string
+	AdminPort       int
+	PublicHost      string
+	PublicPort      int
 
-	Machine       string
-	DataCenter    string
+	Machine         string
+	DataCenter      string
 
-	DiskSize      uint64
-	DiskUsed      uint64
-	DiskFree      uint64
+	DiskSize        uint64
+	DiskUsed        uint64
+	DiskFree        uint64
+	CanCreateVolume bool
 
-	LastHeartbeat time.Time `json:"-"`
+	LastHeartbeat   time.Time `json:"-"`
 
-	VStatusList   []*VolumeStatus
+	VStatusList     []*VolumeStatus
 }
 
 func (vms *VolumeManagerStatus)IsAlive() bool {
 	return vms.LastHeartbeat.Add(MaxHeartbeatDuration).After(time.Now())
 }
 
-//TODO: 判断vm是否有足够的空间
 func (vms *VolumeManagerStatus)canCreateVolume() bool {
-	return true
+	return vms.CanCreateVolume
 }
 
 func (vms *VolumeManagerStatus)createVolume(vid uint64) error {
@@ -40,6 +40,9 @@ func (vms *VolumeManagerStatus)createVolume(vid uint64) error {
 		return err
 	}
 
-	vms.VStatusList = append(vms.VStatusList, &VolumeStatus{Id: vid, vmStatus: vms})
+	vms.VStatusList = append(
+		vms.VStatusList,
+		&VolumeStatus{Id: vid, vmStatus: vms, Writable: true, MaxFreeSpace: 512 * 1 << 30},
+	)
 	return nil
 }

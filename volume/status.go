@@ -22,8 +22,8 @@ func init() {
 }
 
 type Status struct {
-	path       string
-	db         *leveldb.DB
+	path string
+	db   *leveldb.DB
 
 	spaceMutex sync.Mutex
 }
@@ -137,6 +137,20 @@ func (s *Status)freeSpace(offset uint64, size uint64) error {
 	transaction.Put(key, nil, nil)
 
 	return transaction.Commit()
+}
+
+func (s *Status)getMaxFreeSpace() uint64 {
+	iter := s.db.NewIterator(util.BytesPrefix(reversedsizeOffset[:1]), nil)
+	defer iter.Release()
+
+	iter.Next()
+	key := iter.Key()
+	if len(key) == 0 {
+		return 0
+	}
+
+	freeSize := binary.BigEndian.Uint64(key[1:9]) ^ (^uint64(0))
+	return freeSize
 }
 
 func getOffsetSizeKey(offset, size uint64) []byte {

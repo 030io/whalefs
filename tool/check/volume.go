@@ -20,12 +20,12 @@ func NewChecker(volumePath string) (*Checker, error) {
 		return checker, err
 	}
 
-	checker.index, err = leveldb.Open(volumePath + ".index", nil)
+	checker.index, err = leveldb.OpenFile(volumePath + ".index", nil)
 	if err != nil {
 		return checker, err
 	}
 
-	checker.status, err = leveldb.Open(volumePath + ".status", nil)
+	checker.status, err = leveldb.OpenFile(volumePath + ".status", nil)
 	return checker, err
 }
 

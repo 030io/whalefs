@@ -14,9 +14,9 @@ import (
 type VolumeStatus struct {
 	Id           uint64
 	DataFileSize uint64
-	//FreeSpace    uint64
+	MaxFreeSpace uint64
 
-	//Writable     bool
+	Writable     bool
 
 	vmStatus     *VolumeManagerStatus `json:"-"`
 }
@@ -78,6 +78,6 @@ func (vs *VolumeStatus)delete(fid uint64, fileName string) error {
 	return api.Delete(vs.vmStatus.AdminHost, vs.vmStatus.AdminPort, vs.Id, fid, fileName)
 }
 
-func (vs *VolumeStatus)IsWritable() bool {
-	//TODO: is writable
+func (vs *VolumeStatus)IsWritable(size uint64) bool {
+	return vs.Writable && vs.MaxFreeSpace >= size
 }

@@ -18,7 +18,7 @@ func (m *Master)publicEntry(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodGet || r.Method == http.MethodHead {
 		m.getFile(w, r)
-	}else {
+	} else {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
@@ -99,12 +99,12 @@ func (m *Master)heartbeat(w http.ResponseWriter, r *http.Request) {
 		vsList := m.VStatusListMap[vs.Id]
 		if vsList == nil {
 			vsList = []*VolumeStatus{vs}
-		}else {
+		} else {
 			vsList = append(vsList, vs)
 		}
 		m.VStatusListMap[vs.Id] = vsList
 
-		if needToCreateVolume && m.vStatusListIsValid(vsList) {
+		if needToCreateVolume && m.vStatusListIsValid(vsList) && m.vStatusListIsWritable(vsList, 0) {
 			needToCreateVolume = false
 		}
 	}
@@ -143,54 +143,44 @@ func (m *Master)getFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *Master)uploadFile(w http.ResponseWriter, r *http.Request) {
-	//如果存在则删除旧文件,再上传新文件
-	//vid, fid, fileName, err := m.Metadata.Get(r.URL.Path)
-	//if err == nil {
-	//	vStatusList := m.VStatusListMap[vid]
-	//	vStatus := vStatusList[0]
-	//	err = vStatus.delete(fid, fileName)
-	//	if err != nil {
-	//		http.Error(w, err.Error(), http.StatusInternalServerError)
-	//		return
-	//	}
-	//	m.Metadata.Delete(r.URL.Path)
-	//}
-
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "r.FromFile: " + err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	var dst string
 	if r.URL.Path[len(r.URL.Path) - 1] == '/' {
 		dst = r.URL.Path + filepath.Base(header.Filename)
-	}else {
+	} else {
 		dst = r.URL.Path
 	}
 	fileName := filepath.Base(dst)
+	data, _ := ioutil.ReadAll(file)
+	fileSize := uint64(len(data))
 
 	if m.Metadata.Has(dst) {
 		http.Error(w, "file is existed, you should delete it at first.", http.StatusNotAcceptable)
 		return
 	}
 
-	vStatusList, err := m.getWritableVolumes()
+	vStatusList, err := m.getWritableVolumes(fileSize)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "m.getWritableVolumes: " + err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	data, _ := ioutil.ReadAll(file)
 	fid := m.generateFid()
 
 	wg := sync.WaitGroup{}
+	var errVS *VolumeStatus
 	for _, vStatus := range vStatusList {
 		wg.Add(1)
 		go func(vs *VolumeStatus) {
 			e := vs.uploadFile(fid, fileName, data)
 			if e != nil {
 				err = e
+				errVS = vs
 			}
 			wg.Done()
 		}(vStatus)
@@ -201,13 +191,15 @@ func (m *Master)uploadFile(w http.ResponseWriter, r *http.Request) {
 		for _, vStatus := range vStatusList {
 			go vStatus.delete(fid, fileName)
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w,
+			fmt.Sprintf("host: %s port: %d error: %s", errVS.vmStatus.AdminHost, errVS.vmStatus.AdminPort, err),
+			http.StatusInternalServerError)
 		return
 	}
 
 	m.Metadata.Set(dst, vStatusList[0].Id, fid, fileName)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "m.Metadata.Set: " + err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
@@ -226,7 +218,7 @@ func (m *Master)deleteFile(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		http.Error(w, "can't find volume", http.StatusNotFound)
 		return
-	}else if !m.vStatusListIsValid(vStatusList) {
+	} else if !m.vStatusListIsValid(vStatusList) || !m.vStatusListIsWritable(vStatusList, 0) {
 		http.Error(w, "can't delete file, because it's(volumes) readonly.", http.StatusNotAcceptable)
 	}
 
@@ -237,7 +229,10 @@ func (m *Master)deleteFile(w http.ResponseWriter, r *http.Request) {
 		go func(vStatus *VolumeStatus) {
 			e := vStatus.delete(fid, fileName)
 			if e != nil {
-				deleteErr = append(deleteErr, fmt.Errorf("%s:%d %s", vStatus.vmStatus.AdminHost, vStatus.vmStatus.AdminPort, e.Error()))
+				deleteErr = append(
+					deleteErr,
+					fmt.Errorf("%s:%d %s", vStatus.vmStatus.AdminHost, vStatus.vmStatus.AdminPort, e.Error()),
+				)
 			}
 			wg.Done()
 		}(vStatus)
@@ -251,7 +246,7 @@ func (m *Master)deleteFile(w http.ResponseWriter, r *http.Request) {
 
 	if len(deleteErr) == 0 {
 		w.WriteHeader(http.StatusAccepted)
-	}else {
+	} else {
 		errStr := ""
 		for _, err := range deleteErr {
 			errStr += err.Error() + "\n"

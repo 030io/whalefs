@@ -11,9 +11,13 @@ import (
 	"time"
 	"github.com/030io/whalefs/master/api"
 	"github.com/030io/whalefs/master"
+	"github.com/030io/whalefs/utils/disk"
 )
 
-const MaxHeartbeatDuration time.Duration = time.Second * 5
+var (
+	MaxDiskUsedPercent uint = 99
+	HeartbeatDuration time.Duration = time.Second * 5
+)
 
 type VolumeManager struct {
 	DataDir      string
@@ -100,7 +104,7 @@ func (vm *VolumeManager)Stop() {
 }
 
 func (vm *VolumeManager)Heartbeat() {
-	tick := time.NewTicker(MaxHeartbeatDuration)
+	tick := time.NewTicker(HeartbeatDuration)
 	defer tick.Stop()
 	for {
 		vms := new(master.VolumeManagerStatus)
@@ -112,10 +116,26 @@ func (vm *VolumeManager)Heartbeat() {
 		vms.DataCenter = vm.Machine
 		vms.VStatusList = make([]*master.VolumeStatus, 0, len(vm.Volumes))
 
+		diskUsage, _ := disk.DiskUsage(vm.DataDir)
+		vms.DiskSize = diskUsage.Size
+		vms.DiskUsed = diskUsage.Used
+		vms.DiskFree = diskUsage.Free
+
+		diskUsedPercent := uint(float64(diskUsage.Used) / float64(diskUsage.Size) * 100)
+		if diskUsedPercent >= MaxDiskUsedPercent {
+			//禁止所有volume再进行truncate
+			volume.MaxVolumeSize = 0
+			vms.CanCreateVolume = false
+		} else {
+			vms.CanCreateVolume = true
+		}
+
 		for vid, v := range vm.Volumes {
 			vs := new(master.VolumeStatus)
 			vs.Id = vid
-			vs.DataFileSize = v.DataFileSize
+			vs.DataFileSize = v.GetDatafileSize()
+			vs.Writable = v.WriteAble
+			vs.MaxFreeSpace = v.GetMaxFreeSpace()
 			vms.VStatusList = append(vms.VStatusList, vs)
 		}
 
@@ -123,5 +143,3 @@ func (vm *VolumeManager)Heartbeat() {
 		<-tick.C
 	}
 }
-
-
