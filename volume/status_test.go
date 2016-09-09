@@ -3,7 +3,6 @@ package volume
 import (
 	"testing"
 	"io/ioutil"
-	"encoding/binary"
 	"os"
 )
 
@@ -36,16 +35,20 @@ func TestStatus(t *testing.T) {
 		t.Error(err)
 	}
 
-	binary.BigEndian.PutUint64(offsetSize[1:9], 0)
-	binary.BigEndian.PutUint64(offsetSize[9:], 10000)
-	_, err = status.db.Get(offsetSize, nil)
+	key := getOffsetSizeKey(0, 10000)
+	_, err = status.db.Get(key, nil)
+	//binary.BigEndian.PutUint64(offsetSize[1:9], 0)
+	//binary.BigEndian.PutUint64(offsetSize[9:], 10000)
+	//_, err = status.db.Get(offsetSize, nil)
 	if err != nil {
 		t.Error(err)
 	}
 
-	binary.BigEndian.PutUint64(reversedsizeOffset[1:9], 10000 ^ (^uint64(0)))
-	binary.BigEndian.PutUint64(reversedsizeOffset[9:], 0)
-	_, err = status.db.Get(reversedsizeOffset, nil)
+	key = getReversedsizeOffset(0, 10000)
+	_, err = status.db.Get(key, nil)
+	//binary.BigEndian.PutUint64(reversedsizeOffset[1:9], 10000 ^ (^uint64(0)))
+	//binary.BigEndian.PutUint64(reversedsizeOffset[9:], 0)
+	//_, err = status.db.Get(reversedsizeOffset, nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -55,16 +58,20 @@ func TestStatus(t *testing.T) {
 		t.Error(err)
 	}
 
-	binary.BigEndian.PutUint64(offsetSize[1:9], 1000)
-	binary.BigEndian.PutUint64(offsetSize[9:], 9000)
-	_, err = status.db.Get(offsetSize, nil)
+	key = getOffsetSizeKey(1000, 9000)
+	_, err = status.db.Get(key, nil)
+	//binary.BigEndian.PutUint64(offsetSize[1:9], 1000)
+	//binary.BigEndian.PutUint64(offsetSize[9:], 9000)
+	//_, err = status.db.Get(offsetSize, nil)
 	if err != nil {
 		t.Error(err)
 	}
 
-	binary.BigEndian.PutUint64(reversedsizeOffset[1:9], 9000 ^ (^uint64(0)))
-	binary.BigEndian.PutUint64(reversedsizeOffset[9:], 1000)
-	_, err = status.db.Get(reversedsizeOffset, nil)
+	key = getReversedsizeOffset(1000, 9000)
+	_, err = status.db.Get(key, nil)
+	//binary.BigEndian.PutUint64(reversedsizeOffset[1:9], 9000 ^ (^uint64(0)))
+	//binary.BigEndian.PutUint64(reversedsizeOffset[9:], 1000)
+	//_, err = status.db.Get(reversedsizeOffset, nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -74,16 +81,20 @@ func TestStatus(t *testing.T) {
 		t.Error(err)
 	}
 
-	binary.BigEndian.PutUint64(offsetSize[1:9], 1000)
-	binary.BigEndian.PutUint64(offsetSize[9:], 19000)
-	_, err = status.db.Get(offsetSize, nil)
+	key = getOffsetSizeKey(1000, 19000)
+	_, err = status.db.Get(key, nil)
+	//binary.BigEndian.PutUint64(offsetSize[1:9], 1000)
+	//binary.BigEndian.PutUint64(offsetSize[9:], 19000)
+	//_, err = status.db.Get(offsetSize, nil)
 	if err != nil {
 		t.Error(err)
 	}
 
-	binary.BigEndian.PutUint64(reversedsizeOffset[1:9], 19000 ^ (^uint64(0)))
-	binary.BigEndian.PutUint64(reversedsizeOffset[9:], 1000)
-	_, err = status.db.Get(reversedsizeOffset, nil)
+	key = getReversedsizeOffset(1000, 19000)
+	_, err = status.db.Get(key, nil)
+	//binary.BigEndian.PutUint64(reversedsizeOffset[1:9], 19000 ^ (^uint64(0)))
+	//binary.BigEndian.PutUint64(reversedsizeOffset[9:], 1000)
+	//_, err = status.db.Get(reversedsizeOffset, nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -100,16 +111,20 @@ func TestStatus(t *testing.T) {
 		}
 	}
 
-	binary.BigEndian.PutUint64(offsetSize[1:9], 1000)
-	binary.BigEndian.PutUint64(offsetSize[9:], 19000)
-	_, err = status.db.Get(offsetSize, nil)
+	key = getOffsetSizeKey(1000, 19000)
+	_, err = status.db.Get(key, nil)
+	//binary.BigEndian.PutUint64(offsetSize[1:9], 1000)
+	//binary.BigEndian.PutUint64(offsetSize[9:], 19000)
+	//_, err = status.db.Get(offsetSize, nil)
 	if err != nil {
 		t.Error(err)
 	}
 
-	binary.BigEndian.PutUint64(reversedsizeOffset[1:9], 19000 ^ (^uint64(0)))
-	binary.BigEndian.PutUint64(reversedsizeOffset[9:], 1000)
-	_, err = status.db.Get(reversedsizeOffset, nil)
+	key = getReversedsizeOffset(1000, 19000)
+	_, err = status.db.Get(key, nil)
+	//binary.BigEndian.PutUint64(reversedsizeOffset[1:9], 19000 ^ (^uint64(0)))
+	//binary.BigEndian.PutUint64(reversedsizeOffset[9:], 1000)
+	//_, err = status.db.Get(reversedsizeOffset, nil)
 	if err != nil {
 		t.Error(err)
 	}
