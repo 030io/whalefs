@@ -5,7 +5,7 @@ import (
 	"github.com/030io/whalefs/volume/api"
 )
 
-const MaxHeartbeatDuration time.Duration = time.Second * 10
+var MaxHeartbeatDuration time.Duration = time.Second * 10
 
 type VolumeManagerStatus struct {
 	AdminHost       string

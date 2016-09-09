@@ -5,7 +5,9 @@ import (
 	"os"
 	masterServer "github.com/030io/whalefs/master"
 	"github.com/030io/whalefs/volume/manager"
+	"github.com/030io/whalefs/volume"
 	"github.com/030io/whalefs/tool/benchmark"
+	parser "github.com/030io/whalefs/utils/kingpin_parser"
 	"fmt"
 	"net"
 	"net/http"
@@ -31,9 +33,10 @@ var (
 	masterRedisPort = master.Flag("redisPort", "ip of redis server").Default("6379").Int()
 	masterRedisPW = master.Flag("redisPW", "password of redis server").String()
 	masterRedisN = master.Flag("redisN", "database of redis server").Default("0").Int()
+	masterHeartbeat = master.Flag("heartbeat", "max volume manager heartbeat duration").Default("10s").Duration()
 
 	volumeManager = app.Command("volume", "volume manager server")
-	vmDir = volumeManager.Flag("dir", "directory to store data").Required().String()
+	vmDir = volumeManager.Flag("dir", "directory to store data").Short('d').Required().String()
 	vmAdminHost = volumeManager.Flag("adminHost", "for manage files (default: auto detect by master)").String()
 	vmAdminPort = volumeManager.Flag("adminPort", "for manage files (default: 7800-7899)").Int()
 	vmPublicHost = volumeManager.Flag("publicHost", "for access files (default: auto detect by master)").String()
@@ -42,13 +45,18 @@ var (
 	vmMasterPort = volumeManager.Flag("masterPort", "port of master server").Default("8888").Int()
 	vmMachine = volumeManager.Flag("machine", "machine tag of volume manager server (defalut: auto detect by master)").String()
 	vmDataCenter = volumeManager.Flag("dataCenter", "datacenter tag of volume manager server (defalut: \"\")").String()
+	vmDiskPercent = volumeManager.Flag("diskPercent", "max disk used percent(max: 99)").Default("99").Uint()
+	vmHeartbeat = volumeManager.Flag("heartbeat", "heartbeat duration").Default("5s").Duration()
+	vmTruncateSize = parser.Size(volumeManager.Flag("truncate", "volume truncate size(B/K/M/G)").Default("1G"))
+	vmMaxSize = parser.Size(volumeManager.Flag("maxSize", "volume max size(B/K/M/G)").Default("512G"))
+	vmReadonly = volumeManager.Flag("readOnly", "all volume read only").Default("false").Bool()
 
 	benchmark_ = app.Command("benchmark", "benchmark")
 	bmMasterHost = benchmark_.Flag("masterHost", "host of master server").Default("localhost").String()
 	bmMasterPort = benchmark_.Flag("masterPort", "post of master server").Default("8888").Int()
 	bmConcurrent = benchmark_.Flag("concurrent", "concurrent").Default("16").Int()
 	bmNum = benchmark_.Flag("num", "number of file write/read").Default("1000").Int()
-	bmSize = benchmark_.Flag("size", "size of file write/read").Default("1024").Int()
+	bmSize = parser.Size(benchmark_.Flag("size", "size of file write/read").Default("1024B"))
 )
 
 func main() {
@@ -62,6 +70,8 @@ func main() {
 
 	switch command {
 	case master.FullCommand():
+		masterServer.MaxHeartbeatDuration = *masterHeartbeat
+
 		m, err := masterServer.NewMaster()
 		if err != nil {
 			panic(m)
@@ -89,6 +99,25 @@ func main() {
 
 		m.Start()
 	case volumeManager.FullCommand():
+		if *vmDiskPercent > 99 {
+			panic(fmt.Sprintf("max disk used percent %d > 99", *vmDiskPercent))
+		} else if *vmDiskPercent < 2 {
+			panic(fmt.Sprintf("max disk used percent < %d, Are you serious?", *vmDiskPercent))
+		}
+		manager.MaxDiskUsedPercent = *vmDiskPercent
+		manager.HeartbeatDuration = *vmHeartbeat
+		manager.ReadOnly = *vmReadonly
+
+		if *vmMaxSize < 1 << 20 {
+			panic("volume max size < 1M, Are you serious?")
+		}
+		volume.MaxVolumeSize = *vmMaxSize
+
+		if *vmTruncateSize < 1 << 20 {
+			panic("volume truncate size < 1M, Are you serious?")
+		}
+		volume.TruncateSize = *vmTruncateSize
+
 		vm, err := manager.NewVolumeManager(*vmDir)
 		if err != nil {
 			panic(err)
@@ -140,7 +169,7 @@ func main() {
 			}
 		}()
 
-		benchmark.Benchmark(*bmMasterHost, *bmMasterPort, *bmConcurrent, *bmNum, *bmSize)
+		benchmark.Benchmark(*bmMasterHost, *bmMasterPort, *bmConcurrent, *bmNum, int(*bmSize))
 	}
 }
 

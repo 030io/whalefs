@@ -17,6 +17,7 @@ import (
 var (
 	MaxDiskUsedPercent uint = 99
 	HeartbeatDuration time.Duration = time.Second * 5
+	ReadOnly bool = false
 )
 
 type VolumeManager struct {
@@ -134,7 +135,7 @@ func (vm *VolumeManager)Heartbeat() {
 			vs := new(master.VolumeStatus)
 			vs.Id = vid
 			vs.DataFileSize = v.GetDatafileSize()
-			vs.Writable = v.WriteAble
+			vs.Writable = !ReadOnly && v.WriteAble
 			vs.MaxFreeSpace = v.GetMaxFreeSpace()
 			vms.VStatusList = append(vms.VStatusList, vs)
 		}
