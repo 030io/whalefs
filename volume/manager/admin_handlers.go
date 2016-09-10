@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"io"
 	"fmt"
-//"encoding/json"
 	"github.com/030io/whalefs/volume"
 	"gopkg.in/redis.v2"
+	"os"
 )
 
 var (
@@ -43,15 +43,15 @@ func (vm *VolumeManager)adminEntry(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		if postFileUrl.MatchString(r.URL.Path) {
 			vm.adminPostFile(w, r)
-		}else if postVolumeUrl.MatchString(r.URL.Path) {
+		} else if postVolumeUrl.MatchString(r.URL.Path) {
 			vm.adminPostVolume(w, r)
-		}else {
+		} else {
 			http.Error(w, r.URL.String() + " can't match", http.StatusNotFound)
 		}
 	case http.MethodDelete:
 		if deleteFileUrl.MatchString(r.URL.Path) {
 			vm.adminDeleteFile(w, r)
-		}else {
+		} else {
 			http.Error(w, r.URL.String() + " can't match", http.StatusNotFound)
 		}
 	default:
@@ -88,7 +88,14 @@ func (vm *VolumeManager)adminPostFile(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	fileSize := file.(Size).Size()
+	var fileSize int64
+	switch file.(type) {
+	case *os.File:
+		s, _ := file.(*os.File).Stat()
+		fileSize = s.Size()
+	case Size:
+		fileSize = file.(Size).Size()
+	}
 
 	fid, _ := strconv.ParseUint(match[2], 10, 64)
 	file_, err := volume.NewFile(fid, header.Filename, uint64(fileSize))
@@ -108,7 +115,7 @@ func (vm *VolumeManager)adminPostFile(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}else if n != fileSize {
+	} else if n != fileSize {
 		err = fmt.Errorf("%d != %d", n, fileSize)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -130,9 +137,9 @@ func (vm *VolumeManager)adminDeleteFile(w http.ResponseWriter, r *http.Request) 
 	err := volume.Delete(fid, match[3])
 	if err == redis.Nil {
 		http.NotFound(w, r)
-	}else if err != nil {
+	} else if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}else {
+	} else {
 		w.WriteHeader(http.StatusAccepted)
 	}
 }
