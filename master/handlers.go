@@ -10,7 +10,12 @@ import (
 	"math/rand"
 	"path/filepath"
 	"fmt"
+	"os"
 )
+
+type Size interface {
+	Size() int64
+}
 
 func (m *Master)publicEntry(w http.ResponseWriter, r *http.Request) {
 	m.serverMutex.RLock()
@@ -28,7 +33,7 @@ func (m *Master)masterEntry(w http.ResponseWriter, r *http.Request) {
 	defer m.serverMutex.RUnlock()
 
 	switch r.URL.Path {
-	case "/heartbeat":
+	case "/__heartbeat":
 		m.heartbeat(w, r)
 	default:
 		if r.URL.Path == "/favicon.ico" || len(r.URL.Path) <= 1 {
@@ -148,6 +153,7 @@ func (m *Master)uploadFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "r.FromFile: " + err.Error(), http.StatusInternalServerError)
 		return
 	}
+	defer file.Close()
 
 	var dst string
 	if r.URL.Path[len(r.URL.Path) - 1] == '/' {
@@ -156,20 +162,28 @@ func (m *Master)uploadFile(w http.ResponseWriter, r *http.Request) {
 		dst = r.URL.Path
 	}
 	fileName := filepath.Base(dst)
-	data, _ := ioutil.ReadAll(file)
-	fileSize := uint64(len(data))
 
 	if m.Metadata.Has(dst) {
 		http.Error(w, "file is existed, you should delete it at first.", http.StatusNotAcceptable)
 		return
 	}
 
-	vStatusList, err := m.getWritableVolumes(fileSize)
+	var fileSize int64
+	switch file.(type){
+	case *os.File:
+		s, _ := file.(*os.File).Stat()
+		fileSize = s.Size()
+	case Size:
+		fileSize = file.(Size).Size()
+	}
+
+	vStatusList, err := m.getWritableVolumes(uint64(fileSize))
 	if err != nil {
 		http.Error(w, "m.getWritableVolumes: " + err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	data, _ := ioutil.ReadAll(file)
 	fid := m.generateFid()
 
 	wg := sync.WaitGroup{}

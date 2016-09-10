@@ -10,7 +10,7 @@ import (
 )
 
 func Heartbeat(host string, port int, vms *master.VolumeManagerStatus) error {
-	url := fmt.Sprintf("http://%s:%d/heartbeat", host, port)
+	url := fmt.Sprintf("http://%s:%d/__heartbeat", host, port)
 	body, err := json.Marshal(vms)
 	reader := bytes.NewReader(body)
 	resp, err := http.Post(url, "application/json", reader)
