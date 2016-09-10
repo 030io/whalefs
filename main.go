@@ -14,6 +14,7 @@ import (
 	"os/signal"
 	"syscall"
 	"runtime/debug"
+	"github.com/030io/whalefs/tool/check"
 )
 
 const version = "2.6 beta"
@@ -57,6 +58,9 @@ var (
 	bmConcurrent = benchmark_.Flag("concurrent", "concurrent").Default("16").Int()
 	bmNum = benchmark_.Flag("num", "number of file write/read").Default("1000").Int()
 	bmSize = parser.Size(benchmark_.Flag("size", "size of file write/read").Default("1024B"))
+
+	check_ = app.Command("check", "check volume path")
+	cPath = check_.Arg("path", "path").String()
 )
 
 func main() {
@@ -170,6 +174,8 @@ func main() {
 		}()
 
 		benchmark.Benchmark(*bmMasterHost, *bmMasterPort, *bmConcurrent, *bmNum, int(*bmSize))
+	case check_.FullCommand():
+		check.Check(*cPath)
 	}
 }
 
