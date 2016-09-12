@@ -64,9 +64,6 @@ var (
 )
 
 func main() {
-	signals := make(chan os.Signal)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
-
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))
 
 	debug.SetGCPercent(*gcpercent)
@@ -74,105 +71,10 @@ func main() {
 
 	switch command {
 	case master.FullCommand():
-		masterServer.MaxHeartbeatDuration = *masterHeartbeat
-
-		m, err := masterServer.NewMaster()
-		if err != nil {
-			panic(m)
-		}
-		m.Metadata, err = masterServer.NewMetadataRedis(*masterRedisServer, *masterRedisPort, *masterRedisPW, *masterRedisN)
-		if err != nil {
-			panic(err)
-		}
-		m.Port = *masterPort
-		m.PublicPort = *masterPublicPort
-		for i, c := range *masterReplication {
-			m.Replication[i] = int(c) - int('0')
-		}
-
-		go func() {
-			sig := <-signals
-			m.Stop()
-			switch sig {
-			case syscall.SIGINT:
-				os.Exit(int(syscall.SIGINT))
-			case syscall.SIGTERM:
-				os.Exit(int(syscall.SIGTERM))
-			}
-		}()
-
-		m.Start()
+		startMaster()
 	case volumeManager.FullCommand():
-		if *vmDiskPercent > 99 {
-			panic(fmt.Sprintf("max disk used percent %d > 99", *vmDiskPercent))
-		} else if *vmDiskPercent < 2 {
-			panic(fmt.Sprintf("max disk used percent < %d, Are you serious?", *vmDiskPercent))
-		}
-		manager.MaxDiskUsedPercent = *vmDiskPercent
-		manager.HeartbeatDuration = *vmHeartbeat
-		manager.ReadOnly = *vmReadonly
-
-		if *vmMaxSize < 1 << 20 {
-			panic("volume max size < 1M, Are you serious?")
-		}
-		volume.MaxVolumeSize = *vmMaxSize
-
-		if *vmTruncateSize < 1 << 20 {
-			panic("volume truncate size < 1M, Are you serious?")
-		}
-		volume.TruncateSize = *vmTruncateSize
-
-		vm, err := manager.NewVolumeManager(*vmDir)
-		if err != nil {
-			panic(err)
-		}
-
-		vm.AdminHost = *vmAdminHost
-		if *vmAdminPort == 0 {
-			*vmAdminPort, err = getFreeTcpPort(7800, 7900)
-			if err != nil {
-				panic(err)
-			}
-		}
-		vm.AdminPort = *vmAdminPort
-
-		vm.PublicHost = *vmPublicHost
-		if *vmPublicPort == 0 {
-			*vmPublicPort, err = getFreeTcpPort(7900, 8000)
-			if err != nil {
-				panic(err)
-			}
-		}
-		vm.PublicPort = *vmPublicPort
-
-		vm.MasterHost = *vmMasterHost
-		vm.MasterPort = *vmMasterPort
-		vm.Machine = *vmMachine
-		vm.DataCenter = *vmDataCenter
-
-		go func() {
-			sig := <-signals
-			vm.Stop()
-			switch sig {
-			case syscall.SIGINT:
-				os.Exit(int(syscall.SIGINT))
-			case syscall.SIGTERM:
-				os.Exit(int(syscall.SIGTERM))
-			}
-		}()
-
-		vm.Start()
+		startVolumeManager()
 	case benchmark_.FullCommand():
-		go func() {
-			sig := <-signals
-			switch sig {
-			case syscall.SIGINT:
-				os.Exit(int(syscall.SIGINT))
-			case syscall.SIGTERM:
-				os.Exit(int(syscall.SIGTERM))
-			}
-		}()
-
 		benchmark.Benchmark(*bmMasterHost, *bmMasterPort, *bmConcurrent, *bmNum, int(*bmSize))
 	case check_.FullCommand():
 		check.Check(*cPath)
@@ -187,4 +89,103 @@ func getFreeTcpPort(start, end int) (int, error) {
 		}
 	}
 	return 0, fmt.Errorf("can't get a free port between [%d, %d)", start, end)
+}
+
+func startMaster() {
+	masterServer.MaxHeartbeatDuration = *masterHeartbeat
+
+	m, err := masterServer.NewMaster()
+	if err != nil {
+		panic(m)
+	}
+	m.Metadata, err = masterServer.NewMetadataRedis(*masterRedisServer, *masterRedisPort, *masterRedisPW, *masterRedisN)
+	if err != nil {
+		panic(err)
+	}
+	m.Port = *masterPort
+	m.PublicPort = *masterPublicPort
+	for i, c := range *masterReplication {
+		m.Replication[i] = int(c) - int('0')
+	}
+
+	signals := make(chan os.Signal)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		sig := <-signals
+		m.Stop()
+		switch sig {
+		case syscall.SIGINT:
+			os.Exit(int(syscall.SIGINT))
+		case syscall.SIGTERM:
+			os.Exit(int(syscall.SIGTERM))
+		}
+	}()
+
+	m.Start()
+}
+
+func startVolumeManager() {
+	if *vmDiskPercent > 99 {
+		panic(fmt.Sprintf("max disk used percent %d > 99", *vmDiskPercent))
+	} else if *vmDiskPercent < 2 {
+		panic(fmt.Sprintf("max disk used percent < %d, Are you serious?", *vmDiskPercent))
+	}
+	manager.MaxDiskUsedPercent = *vmDiskPercent
+	manager.HeartbeatDuration = *vmHeartbeat
+	manager.ReadOnly = *vmReadonly
+
+	if *vmMaxSize < 1 << 20 {
+		panic("volume max size < 1M, Are you serious?")
+	}
+	volume.MaxVolumeSize = *vmMaxSize
+
+	if *vmTruncateSize < 1 << 20 {
+		panic("volume truncate size < 1M, Are you serious?")
+	}
+	volume.TruncateSize = *vmTruncateSize
+
+	vm, err := manager.NewVolumeManager(*vmDir)
+	if err != nil {
+		panic(err)
+	}
+
+	vm.AdminHost = *vmAdminHost
+	if *vmAdminPort == 0 {
+		*vmAdminPort, err = getFreeTcpPort(7800, 7900)
+		if err != nil {
+			panic(err)
+		}
+	}
+	vm.AdminPort = *vmAdminPort
+
+	vm.PublicHost = *vmPublicHost
+	if *vmPublicPort == 0 {
+		*vmPublicPort, err = getFreeTcpPort(7900, 8000)
+		if err != nil {
+			panic(err)
+		}
+	}
+	vm.PublicPort = *vmPublicPort
+
+	vm.MasterHost = *vmMasterHost
+	vm.MasterPort = *vmMasterPort
+	vm.Machine = *vmMachine
+	vm.DataCenter = *vmDataCenter
+
+	signals := make(chan os.Signal)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		sig := <-signals
+		vm.Stop()
+		switch sig {
+		case syscall.SIGINT:
+			os.Exit(int(syscall.SIGINT))
+		case syscall.SIGTERM:
+			os.Exit(int(syscall.SIGTERM))
+		}
+	}()
+
+	vm.Start()
 }
