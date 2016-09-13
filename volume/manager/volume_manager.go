@@ -39,9 +39,13 @@ type VolumeManager struct {
 }
 
 func NewVolumeManager(dir string) (*VolumeManager, error) {
-	if _, err := os.Stat(dir); os.IsNotExist(err) || os.IsPermission(err) {
+	f, err := os.OpenFile(dir, os.O_RDWR, 0)
+	if os.IsNotExist(err) {
 		panic(err)
+	} else if os.IsPermission(err) {
+		ReadOnly = true
 	}
+	f.Close()
 
 	vm := new(VolumeManager)
 	vm.DataDir = dir
@@ -123,7 +127,7 @@ func (vm *VolumeManager)Heartbeat() {
 		vms.DiskFree = diskUsage.Free
 
 		diskUsedPercent := uint(float64(diskUsage.Used) / float64(diskUsage.Size) * 100)
-		if diskUsedPercent >= MaxDiskUsedPercent {
+		if ReadOnly || diskUsedPercent >= MaxDiskUsedPercent {
 			//禁止所有volume再进行truncate
 			volume.MaxVolumeSize = 0
 			vms.CanCreateVolume = false

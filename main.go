@@ -17,7 +17,7 @@ import (
 	"github.com/030io/whalefs/tool/check"
 )
 
-const version = "2.7 release"
+const version = "2.8 beta"
 
 var (
 	app = kingpin.New("whalefs", "A simple filesystem for small file.  Version: " + version)
@@ -36,7 +36,7 @@ var (
 	masterRedisN = master.Flag("redisN", "database of redis server").Default("0").Int()
 	masterHeartbeat = master.Flag("heartbeat", "max volume manager heartbeat duration").Default("10s").Duration()
 
-	volumeManager = app.Command("volume", "volume manager server")
+	volumeManager = app.Command("manager", "volume manager server")
 	vmDir = volumeManager.Flag("dir", "directory to store data").Short('d').Required().String()
 	vmAdminHost = volumeManager.Flag("adminHost", "for manage files (default: auto detect by master)").String()
 	vmAdminPort = volumeManager.Flag("adminPort", "for manage files (default: 7800-7899)").Int()
