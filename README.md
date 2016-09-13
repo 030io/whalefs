@@ -36,7 +36,7 @@ $ whalefs master --redisIP localhost --redisPort 6379 --redisPW password --redis
 ####volume manager(存储节点)
 
 ```sh
-$ whalefs volume --dir volume_dir
+$ whalefs manager --dir volume_dir
 # 以下两个选项跟冗余有关
 # --machine 默认为volume manager跟master通信的ip
 # --dataCenter 默认为空
