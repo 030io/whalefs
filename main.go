@@ -34,7 +34,7 @@ var (
 	masterRedisPort = master.Flag("redisPort", "ip of redis server").Default("6379").Int()
 	masterRedisPW = master.Flag("redisPW", "password of redis server").String()
 	masterRedisN = master.Flag("redisN", "database of redis server").Default("0").Int()
-	masterHeartbeat = master.Flag("heartbeat", "max volume manager heartbeat duration").Default("10s").Duration()
+	masterHeartbeat = master.Flag("heartbeat", "max volume manager heartbeat duration").Default("30s").Duration()
 
 	volumeManager = app.Command("manager", "volume manager server")
 	vmDir = volumeManager.Flag("dir", "directory to store data").Short('d').Required().String()
@@ -47,7 +47,7 @@ var (
 	vmMachine = volumeManager.Flag("machine", "machine tag of volume manager server (defalut: auto detect by master)").String()
 	vmDataCenter = volumeManager.Flag("dataCenter", "datacenter tag of volume manager server (defalut: \"\")").String()
 	vmDiskPercent = volumeManager.Flag("diskPercent", "max disk used percent(max: 99)").Default("99").Uint()
-	vmHeartbeat = volumeManager.Flag("heartbeat", "heartbeat duration").Default("5s").Duration()
+	vmHeartbeat = volumeManager.Flag("heartbeat", "heartbeat duration").Default("15s").Duration()
 	vmTruncateSize = parser.Size(volumeManager.Flag("truncate", "volume truncate size(B/K/M/G)").Default("1G"))
 	vmMaxSize = parser.Size(volumeManager.Flag("maxSize", "volume max size(B/K/M/G)").Default("512G"))
 	vmReadonly = volumeManager.Flag("readOnly", "all volume read only").Default("false").Bool()
