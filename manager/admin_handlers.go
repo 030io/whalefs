@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"io"
 	"fmt"
-	"github.com/030io/whalefs/volume"
+	"github.com/030io/whalefs/manager/volume"
 	"gopkg.in/redis.v2"
 	"os"
 )

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"io/ioutil"
-	"github.com/030io/whalefs/volume/api"
+	"github.com/030io/whalefs/manager/api"
 	"bytes"
 	"mime/multipart"
 	"errors"

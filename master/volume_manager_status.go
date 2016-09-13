@@ -2,7 +2,7 @@ package master
 
 import (
 	"time"
-	"github.com/030io/whalefs/volume/api"
+	"github.com/030io/whalefs/manager/api"
 )
 
 var MaxHeartbeatDuration time.Duration = time.Second * 10

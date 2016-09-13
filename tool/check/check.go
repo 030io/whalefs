@@ -5,7 +5,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	"github.com/syndtr/goleveldb/leveldb/storage"
-	"github.com/030io/whalefs/volume"
+	"github.com/030io/whalefs/manager/volume"
 	"encoding/binary"
 	log "github.com/Sirupsen/logrus"
 	_ "github.com/030io/whalefs/utils/logrus_hook"

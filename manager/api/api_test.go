@@ -4,8 +4,8 @@ import (
 	"testing"
 	"io/ioutil"
 	"os"
-	"github.com/030io/whalefs/volume/manager"
-	"github.com/030io/whalefs/volume/api"
+	"github.com/030io/whalefs/manager"
+	"github.com/030io/whalefs/manager/api"
 	"path/filepath"
 )
 

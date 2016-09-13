@@ -2,7 +2,7 @@ package manager
 
 import (
 	"net/http"
-	"github.com/030io/whalefs/volume"
+	"github.com/030io/whalefs/manager/volume"
 	"os"
 	"io/ioutil"
 	"strings"
