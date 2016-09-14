@@ -6,7 +6,7 @@ import (
 	"sync"
 	"errors"
 	"math/rand"
-	"time"
+	"github.com/030io/whalefs/utils/uuid"
 )
 
 type Master struct {
@@ -70,7 +70,7 @@ func (m *Master)getWritableVolumes(size uint64) ([]*VolumeStatus, error) {
 
 	//map 迭代是随机的,所以不需要手动负载均衡
 	for _, vStatusList := range m.VStatusListMap {
-		if m.vStatusListIsValid(vStatusList) && m.vStatusListIsWritable(vStatusList, size) {
+		if m.volumesIsValid(vStatusList) && m.volumesIsWritable(vStatusList, size) {
 			return vStatusList, nil
 		}
 	}
@@ -78,7 +78,7 @@ func (m *Master)getWritableVolumes(size uint64) ([]*VolumeStatus, error) {
 	return nil, errors.New("can't find writable volumes")
 }
 
-func (m *Master)vStatusListIsValid(vStatusList []*VolumeStatus) bool {
+func (m *Master)volumesIsValid(vStatusList []*VolumeStatus) bool {
 	for _, vs := range vStatusList {
 		if !vs.vmStatus.IsAlive() {
 			return false
@@ -92,7 +92,7 @@ func (m *Master)vStatusListIsValid(vStatusList []*VolumeStatus) bool {
 	return true
 }
 
-func (m *Master)vStatusListIsWritable(vStatusList []*VolumeStatus, size uint64) bool {
+func (m *Master)volumesIsWritable(vStatusList []*VolumeStatus, size uint64) bool {
 	for _, vs := range vStatusList {
 		if !vs.IsWritable(size) {
 			return false
@@ -175,7 +175,7 @@ func (m *Master)createVolumeWithReplication(vms *VolumeManagerStatus) error {
 		return errors.New("can't find enough 'different machine and different datacenter VM' to create volume")
 	}
 
-	vid := m.generateVid()
+	vid := uuid.GenerateUUID()
 	for _, vms := range temp {
 		err := vms.createVolume(vid)
 		if err != nil {
@@ -199,12 +199,4 @@ func (m *Master)createVolumeWithReplication(vms *VolumeManagerStatus) error {
 	m.statusMutex.RLock()
 
 	return nil
-}
-
-func (m *Master)generateVid() uint64 {
-	return uint64(time.Now().UnixNano())
-}
-
-func (m *Master)generateFid() uint64 {
-	return uint64(time.Now().UnixNano())
 }

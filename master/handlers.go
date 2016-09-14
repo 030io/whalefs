@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"fmt"
 	"os"
+	"github.com/030io/whalefs/utils/uuid"
 )
 
 type Size interface {
@@ -95,6 +96,7 @@ func (m *Master)heartbeat(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	//TODO: 优化这里
 	needToCreateVolume := true
 
 	m.VMStatusList = append(m.VMStatusList, newVms)
@@ -109,7 +111,7 @@ func (m *Master)heartbeat(w http.ResponseWriter, r *http.Request) {
 		}
 		m.VStatusListMap[vs.Id] = vsList
 
-		if needToCreateVolume && m.vStatusListIsValid(vsList) && m.vStatusListIsWritable(vsList, 0) {
+		if needToCreateVolume && m.volumesIsValid(vsList) && m.volumesIsWritable(vsList, 0) {
 			needToCreateVolume = false
 		}
 	}
@@ -184,7 +186,7 @@ func (m *Master)uploadFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data, _ := ioutil.ReadAll(file)
-	fid := m.generateFid()
+	fid := uuid.GenerateUUID()
 
 	wg := sync.WaitGroup{}
 	var errVS *VolumeStatus
@@ -232,7 +234,7 @@ func (m *Master)deleteFile(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		http.Error(w, "can't find volume", http.StatusNotFound)
 		return
-	} else if !m.vStatusListIsValid(vStatusList) || !m.vStatusListIsWritable(vStatusList, 0) {
+	} else if !m.volumesIsValid(vStatusList) || !m.volumesIsWritable(vStatusList, 0) {
 		http.Error(w, "can't delete file, because it's(volumes) readonly.", http.StatusNotAcceptable)
 	}
 

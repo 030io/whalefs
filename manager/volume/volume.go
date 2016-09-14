@@ -194,11 +194,14 @@ func (v *Volume)GetDatafileSize() uint64 {
 
 func (v *Volume)GetMaxFreeSpace() uint64 {
 	currentDatafileSize := v.GetDatafileSize()
-	var maxFreeSpace uint64
+
+	//以块方式存储,所以自由空间无法直接相加
+	maxFreeSpace := v.status.getMaxFreeSpace()
 	if currentDatafileSize < MaxVolumeSize {
-		maxFreeSpace = v.status.getMaxFreeSpace() + MaxVolumeSize - currentDatafileSize
-	} else {
-		maxFreeSpace = v.status.getMaxFreeSpace()
+		freeSpace := MaxVolumeSize - currentDatafileSize
+		if freeSpace > maxFreeSpace {
+			maxFreeSpace = freeSpace
+		}
 	}
 
 	//fid前后各占8个字节
