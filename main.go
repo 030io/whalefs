@@ -130,19 +130,15 @@ func startVolumeManager() {
 		panic(fmt.Sprintf("max disk used percent %d > 99", *vmDiskPercent))
 	} else if *vmDiskPercent < 2 {
 		panic(fmt.Sprintf("max disk used percent < %d, Are you serious?", *vmDiskPercent))
+	} else if *vmMaxSize < 1 << 20 {
+		panic("volume max size < 1M, Are you serious?")
+	} else if *vmTruncateSize < 1 << 20 {
+		panic("volume truncate size < 1M, Are you serious?")
 	}
 	manager.MaxDiskUsedPercent = *vmDiskPercent
 	manager.HeartbeatDuration = *vmHeartbeat
 	manager.ReadOnly = *vmReadonly
-
-	if *vmMaxSize < 1 << 20 {
-		panic("volume max size < 1M, Are you serious?")
-	}
 	volume.MaxVolumeSize = *vmMaxSize
-
-	if *vmTruncateSize < 1 << 20 {
-		panic("volume truncate size < 1M, Are you serious?")
-	}
 	volume.TruncateSize = *vmTruncateSize
 
 	vm, err := manager.NewVolumeManager(*vmDir)
