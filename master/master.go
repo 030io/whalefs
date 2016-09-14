@@ -101,6 +101,10 @@ func (m *Master)volumesIsWritable(vStatusList []*VolumeStatus, size uint64) bool
 	return len(vStatusList) != 0
 }
 
+func (m *Master)vmsNeedCreateVolume(vms *VolumeManagerStatus) bool {
+	return vms.CanCreateVolume && vms.MaxDiskUsed > uint64(len(vms.VStatusList)) * vms.VolumeMaxSize
+}
+
 func (m *Master)createVolumeWithReplication(vms *VolumeManagerStatus) error {
 	m.statusMutex.RLock()
 	defer m.statusMutex.RUnlock()
@@ -111,6 +115,7 @@ func (m *Master)createVolumeWithReplication(vms *VolumeManagerStatus) error {
 		//	return fmt.Errorf("%s:%d can't create volume", vms.AdminHost, vms.AdminPort)
 	}
 
+	//TODO: 优化这里
 	temp := []*VolumeManagerStatus{vms}
 
 	VMStatusList := append(make([]*VolumeManagerStatus, 0, len(m.VMStatusList)), m.VMStatusList...)
@@ -126,7 +131,7 @@ func (m *Master)createVolumeWithReplication(vms *VolumeManagerStatus) error {
 		if len(temp) == 1 + m.Replication[0] {
 			break
 		}
-		if vms.IsAlive() && vms.canCreateVolume() {
+		if vms.IsAlive() && vms.CanCreateVolume {
 			for _, vms_ := range temp {
 				if vms == vms_ || vms.Machine != vms_.Machine || vms.DataCenter != vms_.DataCenter {
 					continue find0
@@ -144,7 +149,7 @@ func (m *Master)createVolumeWithReplication(vms *VolumeManagerStatus) error {
 		if len(temp) == 1 + m.Replication[0] + m.Replication[1] {
 			break
 		}
-		if vms.IsAlive() && vms.canCreateVolume() {
+		if vms.IsAlive() && vms.CanCreateVolume {
 			for _, vms_ := range temp {
 				if vms == vms_ || vms.Machine == vms_.Machine || vms.DataCenter != vms_.DataCenter {
 					continue find1
@@ -162,7 +167,7 @@ func (m *Master)createVolumeWithReplication(vms *VolumeManagerStatus) error {
 		if len(temp) == 1 + m.Replication[0] + m.Replication[1] + m.Replication[2] {
 			break
 		}
-		if vms.IsAlive() && vms.canCreateVolume() {
+		if vms.IsAlive() && vms.CanCreateVolume {
 			for _, vms_ := range temp {
 				if vms == vms_ || vms.Machine == vms_.Machine || vms.DataCenter == vms_.DataCenter {
 					continue find2

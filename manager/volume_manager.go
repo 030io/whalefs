@@ -125,6 +125,8 @@ func (vm *VolumeManager)Heartbeat() {
 		vms.DiskSize = diskUsage.Size
 		vms.DiskUsed = diskUsage.Used
 		vms.DiskFree = diskUsage.Free
+		vms.MaxDiskUsed = diskUsage.Size / 100 * uint64(MaxDiskUsedPercent)
+		vms.VolumeMaxSize = volume.MaxVolumeSize
 
 		diskUsedPercent := uint(float64(diskUsage.Used) / float64(diskUsage.Size) * 100)
 		if ReadOnly || diskUsedPercent >= MaxDiskUsedPercent {

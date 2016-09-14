@@ -19,7 +19,10 @@ type VolumeManagerStatus struct {
 	DiskSize        uint64
 	DiskUsed        uint64
 	DiskFree        uint64
+	MaxDiskUsed     uint64
 	CanCreateVolume bool
+
+	VolumeMaxSize   uint64
 
 	LastHeartbeat   time.Time `json:"-"`
 
@@ -28,10 +31,6 @@ type VolumeManagerStatus struct {
 
 func (vms *VolumeManagerStatus)IsAlive() bool {
 	return vms.LastHeartbeat.Add(MaxHeartbeatDuration).After(time.Now())
-}
-
-func (vms *VolumeManagerStatus)canCreateVolume() bool {
-	return vms.CanCreateVolume
 }
 
 func (vms *VolumeManagerStatus)createVolume(vid uint64) error {

@@ -72,6 +72,7 @@ func (m *Master)heartbeat(w http.ResponseWriter, r *http.Request) {
 		newVms.Machine = remoteIP
 	}
 
+	//TODO: 优化这里
 	m.statusMutex.Lock()
 	defer m.statusMutex.Unlock()
 
@@ -96,8 +97,6 @@ func (m *Master)heartbeat(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	//TODO: 优化这里
-	needToCreateVolume := true
 
 	m.VMStatusList = append(m.VMStatusList, newVms)
 
@@ -110,13 +109,9 @@ func (m *Master)heartbeat(w http.ResponseWriter, r *http.Request) {
 			vsList = append(vsList, vs)
 		}
 		m.VStatusListMap[vs.Id] = vsList
-
-		if needToCreateVolume && m.volumesIsValid(vsList) && m.volumesIsWritable(vsList, 0) {
-			needToCreateVolume = false
-		}
 	}
 
-	if needToCreateVolume && newVms.canCreateVolume() {
+	if m.vmsNeedCreateVolume(newVms) {
 		go m.createVolumeWithReplication(newVms)
 	}
 }
