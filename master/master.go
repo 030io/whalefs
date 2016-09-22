@@ -102,21 +102,57 @@ func (m *Master)volumesIsWritable(vStatusList []*VolumeStatus, size uint64) bool
 }
 
 func (m *Master)vmsNeedCreateVolume(vms *VolumeManagerStatus) bool {
-	return vms.CanCreateVolume && vms.MaxDiskUsed > uint64(len(vms.VStatusList)) * vms.VolumeMaxSize
-}
-
-func (m *Master)createVolumeWithReplication(vms *VolumeManagerStatus) error {
 	m.statusMutex.RLock()
 	defer m.statusMutex.RUnlock()
 
-	if !vms.IsAlive() {
-		return fmt.Errorf("%s:%d is dead", vms.AdminHost, vms.AdminPort)
-		//}else if !vms.canCreateVolume() {
-		//	return fmt.Errorf("%s:%d can't create volume", vms.AdminHost, vms.AdminPort)
+	need := true
+	for _, vs := range vms.VStatusList {
+		if m.volumesIsValid(m.VStatusListMap[vs.Id]) && m.volumesIsWritable(m.VStatusListMap[vs.Id], 0) {
+			need = false
+		}
 	}
 
-	//TODO: 优化这里
-	temp := []*VolumeManagerStatus{vms}
+	return need && vms.CanCreateVolume
+}
+
+func (m *Master)createVolumeWithReplication(vms *VolumeManagerStatus) error {
+	if !vms.IsAlive() {
+		return fmt.Errorf("%s:%d is dead", vms.AdminHost, vms.AdminPort)
+	}
+
+	vmsList, err := m.getMatchReplicationVMS(vms)
+	if err != nil {
+		return err
+	}
+
+	vid := uuid.GenerateUUID()
+	for _, vms := range vmsList {
+		err := vms.createVolume(vid)
+		if err != nil {
+			return err
+		}
+	}
+
+	vStatusList := make([]*VolumeStatus, 0, len(vmsList))
+	for _, vms := range vmsList {
+		for _, vs := range vms.VStatusList {
+			if vs.Id == vid {
+				vStatusList = append(vStatusList, vs)
+				break
+			}
+		}
+	}
+	m.statusMutex.Lock()
+	m.VStatusListMap[vid] = vStatusList
+	m.statusMutex.Unlock()
+	return nil
+}
+
+func (m *Master)getMatchReplicationVMS(vms *VolumeManagerStatus) ([]*VolumeManagerStatus, error) {
+	m.statusMutex.RLock()
+	defer m.statusMutex.RUnlock()
+
+	vmsList := []*VolumeManagerStatus{vms}
 
 	VMStatusList := append(make([]*VolumeManagerStatus, 0, len(m.VMStatusList)), m.VMStatusList...)
 	length := len(VMStatusList)
@@ -128,80 +164,96 @@ func (m *Master)createVolumeWithReplication(vms *VolumeManagerStatus) error {
 
 	find0:
 	for _, vms := range VMStatusList {
-		if len(temp) == 1 + m.Replication[0] {
+		if len(vmsList) == 1 + m.Replication[0] {
 			break
 		}
 		if vms.IsAlive() && vms.CanCreateVolume {
-			for _, vms_ := range temp {
+			for _, vms_ := range vmsList {
 				if vms == vms_ || vms.Machine != vms_.Machine || vms.DataCenter != vms_.DataCenter {
 					continue find0
 				}
 			}
-			temp = append(temp, vms)
+			vmsList = append(vmsList, vms)
 		}
 	}
-	if len(temp) != 1 + m.Replication[0] {
-		return errors.New("can't find enough 'same machine VM' to create volume")
+	if len(vmsList) != 1 + m.Replication[0] {
+		return vmsList, errors.New("can't find enough 'same machine VM' to create volume")
 	}
 
 	find1:
 	for _, vms := range VMStatusList {
-		if len(temp) == 1 + m.Replication[0] + m.Replication[1] {
+		if len(vmsList) == 1 + m.Replication[0] + m.Replication[1] {
 			break
 		}
 		if vms.IsAlive() && vms.CanCreateVolume {
-			for _, vms_ := range temp {
+			for _, vms_ := range vmsList {
 				if vms == vms_ || vms.Machine == vms_.Machine || vms.DataCenter != vms_.DataCenter {
 					continue find1
 				}
 			}
-			temp = append(temp, vms)
+			vmsList = append(vmsList, vms)
 		}
 	}
-	if len(temp) != 1 + m.Replication[0] + m.Replication[1] {
-		return errors.New("can't find enough 'different machine but same datacenter VM' to create volume")
+	if len(vmsList) != 1 + m.Replication[0] + m.Replication[1] {
+		return vmsList, errors.New("can't find enough 'different machine but same datacenter VM' to create volume")
 	}
 
 	find2:
 	for _, vms := range VMStatusList {
-		if len(temp) == 1 + m.Replication[0] + m.Replication[1] + m.Replication[2] {
+		if len(vmsList) == 1 + m.Replication[0] + m.Replication[1] + m.Replication[2] {
 			break
 		}
 		if vms.IsAlive() && vms.CanCreateVolume {
-			for _, vms_ := range temp {
+			for _, vms_ := range vmsList {
 				if vms == vms_ || vms.Machine == vms_.Machine || vms.DataCenter == vms_.DataCenter {
 					continue find2
 				}
 			}
-			temp = append(temp, vms)
+			vmsList = append(vmsList, vms)
 		}
 	}
-	if len(temp) != 1 + m.Replication[0] + m.Replication[1] + m.Replication[2] {
-		return errors.New("can't find enough 'different machine and different datacenter VM' to create volume")
+	if len(vmsList) != 1 + m.Replication[0] + m.Replication[1] + m.Replication[2] {
+		return vmsList, errors.New("can't find enough 'different machine and different datacenter VM' to create volume")
 	}
 
-	vid := uuid.GenerateUUID()
-	for _, vms := range temp {
-		err := vms.createVolume(vid)
-		if err != nil {
-			return err
-		}
-	}
+	return vmsList, nil
+}
 
-	vStatusList := make([]*VolumeStatus, 0, len(temp))
-	for _, vms := range temp {
-		for _, vs := range vms.VStatusList {
-			if vs.Id == vid {
-				vStatusList = append(vStatusList, vs)
-				break
-			}
-		}
-	}
-	m.statusMutex.RUnlock()
+func (m *Master)updateVMS(newVms *VolumeManagerStatus) {
 	m.statusMutex.Lock()
-	m.VStatusListMap[vid] = vStatusList
-	m.statusMutex.Unlock()
-	m.statusMutex.RLock()
+	defer m.statusMutex.Unlock()
 
-	return nil
+	for i, oldVms := range m.VMStatusList {
+		if oldVms.AdminHost == newVms.AdminHost && oldVms.AdminPort == newVms.AdminPort {
+			m.VMStatusList = append(m.VMStatusList[:i], m.VMStatusList[i + 1:]...)
+			for _, vs := range oldVms.VStatusList {
+				vsList := m.VStatusListMap[vs.Id]
+				if len(vsList) == 1 {
+					delete(m.VStatusListMap, vs.Id)
+					continue
+				}
+				for i, vs_ := range vsList {
+					if vs == vs_ {
+						vsList = append(vsList[:i], vsList[i + 1:]...)
+						break
+					}
+				}
+				m.VStatusListMap[vs.Id] = vsList
+			}
+			break
+		}
+	}
+
+	m.VMStatusList = append(m.VMStatusList, newVms)
+
+	for _, vs := range newVms.VStatusList {
+		vs.vmStatus = newVms
+		vsList := m.VStatusListMap[vs.Id]
+		if vsList == nil {
+			vsList = []*VolumeStatus{vs}
+		} else {
+			vsList = append(vsList, vs)
+		}
+		m.VStatusListMap[vs.Id] = vsList
+	}
 }

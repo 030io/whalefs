@@ -72,44 +72,7 @@ func (m *Master)heartbeat(w http.ResponseWriter, r *http.Request) {
 		newVms.Machine = remoteIP
 	}
 
-	//TODO: 优化这里
-	m.statusMutex.Lock()
-	defer m.statusMutex.Unlock()
-
-	for i, oldVms := range m.VMStatusList {
-		if oldVms.AdminHost == newVms.AdminHost && oldVms.AdminPort == newVms.AdminPort {
-			m.VMStatusList = append(m.VMStatusList[:i], m.VMStatusList[i + 1:]...)
-			for _, vs := range oldVms.VStatusList {
-				vsList := m.VStatusListMap[vs.Id]
-				if len(vsList) == 1 {
-					delete(m.VStatusListMap, vs.Id)
-					continue
-				}
-				for i, vs_ := range vsList {
-					if vs == vs_ {
-						vsList = append(vsList[:i], vsList[i + 1:]...)
-						break
-					}
-				}
-				m.VStatusListMap[vs.Id] = vsList
-			}
-			break
-		}
-	}
-
-
-	m.VMStatusList = append(m.VMStatusList, newVms)
-
-	for _, vs := range newVms.VStatusList {
-		vs.vmStatus = newVms
-		vsList := m.VStatusListMap[vs.Id]
-		if vsList == nil {
-			vsList = []*VolumeStatus{vs}
-		} else {
-			vsList = append(vsList, vs)
-		}
-		m.VStatusListMap[vs.Id] = vsList
-	}
+	m.updateVMS(newVms)
 
 	if m.vmsNeedCreateVolume(newVms) {
 		go m.createVolumeWithReplication(newVms)
