@@ -83,7 +83,7 @@ func (vs *VolumeStatus)isWritable(size uint64) bool {
 }
 
 func (vs *VolumeStatus)hasEnoughSpace() bool {
-	return float64(vs.MaxFreeSpace) / float64(vs.DataFileSize) > 0.99
+	return vs.DataFileSize / vs.MaxFreeSpace < 100
 }
 
 func volumesIsWritable(vStatusList []*VolumeStatus, size uint64) bool {
