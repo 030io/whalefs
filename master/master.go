@@ -70,7 +70,7 @@ func (m *Master)getWritableVolumes(size uint64) ([]*VolumeStatus, error) {
 
 	//map 迭代是随机的,所以不需要手动负载均衡
 	for _, vStatusList := range m.VStatusListMap {
-		if m.volumesIsValid(vStatusList) && m.volumesIsWritable(vStatusList, size) {
+		if m.volumesIsValid(vStatusList) && volumesIsWritable(vStatusList, size) {
 			return vStatusList, nil
 		}
 	}
@@ -92,23 +92,15 @@ func (m *Master)volumesIsValid(vStatusList []*VolumeStatus) bool {
 	return true
 }
 
-func (m *Master)volumesIsWritable(vStatusList []*VolumeStatus, size uint64) bool {
-	for _, vs := range vStatusList {
-		if !vs.IsWritable(size) {
-			return false
-		}
-	}
-	return len(vStatusList) != 0
-}
-
 func (m *Master)vmsNeedCreateVolume(vms *VolumeManagerStatus) bool {
 	m.statusMutex.RLock()
 	defer m.statusMutex.RUnlock()
 
 	need := true
 	for _, vs := range vms.VStatusList {
-		if m.volumesIsValid(m.VStatusListMap[vs.Id]) && m.volumesIsWritable(m.VStatusListMap[vs.Id], 0) {
+		if m.volumesIsValid(m.VStatusListMap[vs.Id]) && volumesIsWritable(m.VStatusListMap[vs.Id], 0) && volumesHasEnoughSpace(m.VStatusListMap[vs.Id]) {
 			need = false
+			break
 		}
 	}
 

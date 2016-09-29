@@ -192,7 +192,7 @@ func (m *Master)deleteFile(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		http.Error(w, "can't find volume", http.StatusNotFound)
 		return
-	} else if !m.volumesIsValid(vStatusList) || !m.volumesIsWritable(vStatusList, 0) {
+	} else if !m.volumesIsValid(vStatusList) || !volumesIsWritable(vStatusList, 0) {
 		http.Error(w, "can't delete file, because it's(volumes) readonly.", http.StatusNotAcceptable)
 	}
 

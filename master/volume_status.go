@@ -78,6 +78,28 @@ func (vs *VolumeStatus)delete(fid uint64, fileName string) error {
 	return api.Delete(vs.vmStatus.AdminHost, vs.vmStatus.AdminPort, vs.Id, fid, fileName)
 }
 
-func (vs *VolumeStatus)IsWritable(size uint64) bool {
-	return vs.Writable && vs.MaxFreeSpace >= size
+func (vs *VolumeStatus)isWritable(size uint64) bool {
+	return vs.Writable && vs.MaxFreeSpace != 0 && vs.MaxFreeSpace >= size
+}
+
+func (vs *VolumeStatus)hasEnoughSpace() bool {
+	return float64(vs.MaxFreeSpace) / float64(vs.DataFileSize) > 0.99
+}
+
+func volumesIsWritable(vStatusList []*VolumeStatus, size uint64) bool {
+	for _, vs := range vStatusList {
+		if !vs.isWritable(size) {
+			return false
+		}
+	}
+	return len(vStatusList) != 0
+}
+
+func volumesHasEnoughSpace(vStatusList []*VolumeStatus) bool {
+	for _, vs := range vStatusList {
+		if !vs.hasEnoughSpace() {
+			return false
+		}
+	}
+	return true
 }
