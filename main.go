@@ -51,6 +51,7 @@ var (
 	vmTruncateSize = parser.Size(volumeManager.Flag("truncate", "volume truncate size(B/K/M/G)").Default("1G"))
 	vmMaxSize = parser.Size(volumeManager.Flag("maxSize", "volume max size(B/K/M/G)").Default("512G"))
 	vmReadonly = volumeManager.Flag("readOnly", "all volume read only").Default("false").Bool()
+	vmExpires = volumeManager.Flag("expires", "http Expires header").Default("30m").Duration()
 
 	benchmark_ = app.Command("benchmark", "benchmark")
 	bmMasterHost = benchmark_.Flag("masterHost", "host of master server").Default("localhost").String()
@@ -140,6 +141,7 @@ func startVolumeManager() {
 	manager.ReadOnly = *vmReadonly
 	volume.MaxVolumeSize = *vmMaxSize
 	volume.TruncateSize = *vmTruncateSize
+	manager.DefaultExpires = *vmExpires
 
 	vm, err := manager.NewVolumeManager(*vmDir)
 	if err != nil {

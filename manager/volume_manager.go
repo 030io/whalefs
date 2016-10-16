@@ -18,6 +18,7 @@ var (
 	MaxDiskUsedPercent uint = 99
 	HeartbeatDuration time.Duration = time.Second * 5
 	ReadOnly bool = false
+	DefaultExpires = time.Minute * 30
 )
 
 type VolumeManager struct {
