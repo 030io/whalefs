@@ -55,7 +55,7 @@ func (vm *VolumeManager)publicReadFile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("ETag", fmt.Sprintf("\"%d\"", fid))
 	//暂时不使用Last-Modified,用ETag即可
 	//w.Header().Set("Last-Modified", file.Info.Mtime.Format(http.TimeFormat))
-	w.Header().Set("Expires", time.Now().Add(DefaultExpires).Format(http.TimeFormat))
+	w.Header().Set("Expires", time.Now().In(time.UTC).Add(DefaultExpires).Format(http.TimeFormat))
 
 	etagMatch := false
 	if r.Header.Get("If-None-Match") != "" {
