@@ -50,7 +50,7 @@ func (vm *VolumeManager)publicReadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Type", get_content_type(file.Info.FileName))
 	w.Header().Set("Accept-Ranges", "bytes")
 	w.Header().Set("ETag", fmt.Sprintf("\"%d\"", fid))
 	//暂时不使用Last-Modified,用ETag即可

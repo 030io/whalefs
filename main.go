@@ -17,7 +17,7 @@ import (
 	"github.com/030io/whalefs/tool/check"
 )
 
-const version = "2.8 beta"
+const version = "2.8 release"
 
 var (
 	app = kingpin.New("whalefs", "A simple filesystem for small file.  Version: " + version)
